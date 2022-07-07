@@ -16,10 +16,12 @@ vth = -50
 vreset = -60
 tau_Es = 30
 tau_Is = 10
-gEE = 0.065 * 10
-gEI = 0.0175 * 25
-gIE = -0.1603 * 5
-gII = -0.0082 * 15
+tau_E = 15.0
+tau_I = 10.0
+gEE = 0.065 * 300
+gEI = 0.0175 * 750
+gIE = -0.1603 * 250
+gII = -0.0082 * 750
 shunting_k = 0.25
 
 
@@ -40,12 +42,12 @@ class Shunting(TwoEndConn):
 
 
 class LIF(bp.dyn.NeuGroup):
-    def __init__(self, size, cm, vth, vreset, tau_ref, **kwargs):
+    def __init__(self, size, tau, vth, vreset, tau_ref, **kwargs):
         super(LIF, self).__init__(size, **kwargs)
 
         # parameters
         self.size = size
-        self.cm = cm
+        self.tau = tau
         self.vth = vth
         self.vreset = vreset
         self.tau_ref = tau_ref
@@ -62,7 +64,7 @@ class LIF(bp.dyn.NeuGroup):
         self.integral = bp.odeint(f=self.derivative, method='euler')
 
     def derivative(self, V, t, inputs):
-        dvdt = inputs / self.cm
+        dvdt = inputs / self.tau
         return dvdt
 
     def update(self, _t, _dt):
@@ -86,8 +88,8 @@ class SCANN(bp.dyn.Network):
         self.x = bm.linspace(-bm.pi, bm.pi, size_E)
 
         # neurons
-        E = LIF(size=size_E, cm=0.5, vth=vth, vreset=vreset, tau_ref=5)
-        I = LIF(size=size_I, cm=0.2, vth=vth, vreset=vreset, tau_ref=1)
+        E = LIF(size=size_E, tau=tau_E, vth=vth, vreset=vreset, tau_ref=5)
+        I = LIF(size=size_I, tau=tau_I, vth=vth, vreset=vreset, tau_ref=1)
 
         E.V[:] = bm.random.random(size_E) * (vth - vreset) + vreset
         I.V[:] = bm.random.random(size_I) * (vth - vreset) + vreset
@@ -134,20 +136,20 @@ net = SCANN()
 
 
 # ===== Moving Bump ====
-dur = 2000
-n_step = int(dur / 0.01)
-pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
-inputs = net.get_stimulus_by_pos(pos)
-name = 'cann-moving.gif'
+# dur = 1000
+# n_step = int(dur / 0.01)
+# pos = bm.linspace(0, bm.pi/3, n_step)[:,None]
+# inputs = net.get_stimulus_by_pos(pos)
+# name = 'cann-moving.gif'
 
 
 # ===== Persistent Activity ====
-# inputs = net.get_stimulus_by_pos(0.)
-# inputs, dur = bp.inputs.section_input(values=[inputs, 0.],
-#                                          durations=[500., 500.],
-#                                          return_length=True,
-#                                          dt=0.01)
-# name = 'cann-persistent.gif'
+inputs = net.get_stimulus_by_pos(0.)
+inputs, dur = bp.inputs.section_input(values=[inputs, 0.],
+                                         durations=[500., 500.],
+                                         return_length=True,
+                                         dt=0.01)
+name = 'cann-persistent.gif'
 
 
 
