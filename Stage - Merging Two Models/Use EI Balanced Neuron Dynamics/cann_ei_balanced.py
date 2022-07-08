@@ -12,17 +12,17 @@ import pdb
 bp.math.set_platform('cpu')
 
 size_E, size_I = 1000, 250
-vth = -50
-vreset = -60
-tau_Es = 30
-tau_Is = 10
+vth = 10
+vreset = 0
+tau_Es = 6. 
+tau_Is = 5. 
 tau_E = 15.0
 tau_I = 10.0
-gEE = 0.065 * 300
-gEI = 0.0175 * 750
-gIE = -0.1603 * 250
-gII = -0.0082 * 750
-shunting_k = 0.25
+gEE = 0.065 * 300 * 7
+gEI = 0.0175 * 750 * 4.5
+gIE = -0.1603 * 250 * 0.8
+gII = -0.0082 * 750 * 3
+shunting_k = 1.0
 
 
 class Shunting(TwoEndConn):
@@ -84,7 +84,7 @@ class SCANN(bp.dyn.Network):
         self.a = bm.sqrt(2*bm.pi) * (bm.pi/6)
         self.J = 4.
         # self.A = 0.48
-        self.A = 1.
+        self.A = 2.
         self.x = bm.linspace(-bm.pi, bm.pi, size_E)
 
         # neurons
@@ -136,9 +136,9 @@ net = SCANN()
 
 
 # ===== Moving Bump ====
-# dur = 1000
+# dur = 2000
 # n_step = int(dur / 0.01)
-# pos = bm.linspace(0, bm.pi/3, n_step)[:,None]
+# pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
 # inputs = net.get_stimulus_by_pos(pos)
 # name = 'cann-moving.gif'
 
