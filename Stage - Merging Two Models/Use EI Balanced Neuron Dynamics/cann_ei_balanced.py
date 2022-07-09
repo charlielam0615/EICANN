@@ -11,7 +11,7 @@ import pdb
 
 bp.math.set_platform('cpu')
 
-size_E, size_I = 1000, 250
+size_E, size_I = 5000, 250*5
 vth = 10
 vreset = 0
 tau_Es = 6. 

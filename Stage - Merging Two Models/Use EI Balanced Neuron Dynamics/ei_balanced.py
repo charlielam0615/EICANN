@@ -24,7 +24,7 @@ V_threshold = 10.
 # Different from the original Tian et al. paper
 # mu_f is not normalized in the paper
 # mu_f = 10. / bm.sqrt(num_ff)
-mu_f = bm.array(4.0)
+mu_f = bm.array(1.0)
 
 f_E = 6
 f_I = 4
