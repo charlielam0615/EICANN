@@ -18,10 +18,10 @@ tau_Es = 6.
 tau_Is = 5. 
 tau_E = 15.0
 tau_I = 10.0
-gEE = 0.065 * 300 * 7
-gEI = 0.0175 * 750 * 4.5
-gIE = -0.1603 * 250 * 0.8
-gII = -0.0082 * 750 * 3
+gEE = 0.065 * 300 * 4
+gEI = 0.0175 * 750 * 8
+gIE = -0.1603 * 250 * 2
+gII = -0.0082 * 750 * 30
 shunting_k = 1.0
 
 
@@ -118,7 +118,7 @@ class SCANN(bp.dyn.Network):
         w_ee = w_ee_ / bm.sum(w_ee_, axis=-1, keepdims=True)
         const_conn = lambda w, p: (w > 1-p) / np.maximum(np.sum(w > 1-p, axis=-1, keepdims=True), 1)
         w_ei = const_conn(np.random.rand(size_E, size_I), 1.0)
-        w_ii = const_conn(np.random.rand(size_I, size_I), 0.3)
+        w_ii = const_conn(np.random.rand(size_I, size_I), 1.0)
         w_ie = const_conn(np.random.rand(size_I, size_E), 1.0)
 
         return w_ee, w_ei, w_ie, w_ii
@@ -136,20 +136,20 @@ net = SCANN()
 
 
 # ===== Moving Bump ====
-# dur = 2000
-# n_step = int(dur / 0.01)
-# pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
-# inputs = net.get_stimulus_by_pos(pos)
-# name = 'cann-moving.gif'
+dur = 2000
+n_step = int(dur / 0.01)
+pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
+inputs = net.get_stimulus_by_pos(pos)
+name = 'cann-moving.gif'
 
 
 # ===== Persistent Activity ====
-inputs = net.get_stimulus_by_pos(0.)
-inputs, dur = bp.inputs.section_input(values=[inputs, 0.],
-                                         durations=[500., 500.],
-                                         return_length=True,
-                                         dt=0.01)
-name = 'cann-persistent.gif'
+# inputs = net.get_stimulus_by_pos(0.)
+# inputs, dur = bp.inputs.section_input(values=[inputs, 0.],
+#                                          durations=[500., 500.],
+#                                          return_length=True,
+#                                          dt=0.01)
+# name = 'cann-persistent.gif'
 
 
 
