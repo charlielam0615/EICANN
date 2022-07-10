@@ -79,36 +79,36 @@ class EINet(bp.dyn.Network):
 net = EINet()
 
 # ==== Fast Response to Sin Input =====
-duration = 100.
-sin_inp = bp.inputs.sinusoidal_input(amplitude=mu_f*0.1, frequency=50., duration=duration, dt=0.01) + 0.2*mu_f
-sigma_F = 0.
-noise = sigma_F * bm.random.randn(int(duration/0.01), num)
-inputs = sin_inp[:,None] + noise
+# duration = 100.
+# sin_inp = bp.inputs.sinusoidal_input(amplitude=mu_f*0.1, frequency=50., duration=duration, dt=0.01) + 0.2*mu_f
+# sigma_F = 0.
+# noise = sigma_F * bm.random.randn(int(duration/0.01), num)
+# inputs = sin_inp[:,None] + noise
 
-WEF = f_E/bm.sqrt(num_ff)
-WIF = f_I/bm.sqrt(num_ff)
+# WEF = f_E/bm.sqrt(num_ff)
+# WIF = f_I/bm.sqrt(num_ff)
 
-E_inp = num_ff * WEF * inputs[:, :num_exc]
-I_inp = num_ff * WIF * inputs[:, num_exc:]
+# E_inp = num_ff * WEF * inputs[:, :num_exc]
+# I_inp = num_ff * WIF * inputs[:, num_exc:]
 
-runner = bp.dyn.DSRunner(net,
-                         monitors=['E.spike', 'I.spike', 'E.V'],
-                         inputs=[('E.input', E_inp, 'iter'),
-                                 ('I.input', I_inp, 'iter')],
-                         dt=0.01)
-
-
-t = runner.run(duration)
+# runner = bp.dyn.DSRunner(net,
+#                          monitors=['E.spike', 'I.spike', 'E.V'],
+#                          inputs=[('E.input', E_inp, 'iter'),
+#                                  ('I.input', I_inp, 'iter')],
+#                          dt=0.01)
 
 
-fig, gs = bp.visualize.get_figure(6, 1, 1.5, 10)
+# t = runner.run(duration)
 
-fig.add_subplot(gs[:2, 0])
-bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, duration))
-fig.add_subplot(gs[2:4, 0])
-bp.visualize.line_plot(runner.mon.ts, bm.mean(inputs, axis=1), xlim=(0, duration))
-fig.add_subplot(gs[4:, 0])
-bp.visualize.line_plot(runner.mon.ts, bm.mean(runner.mon['E.spike'].astype(bm.float32),axis=1)/0.01*1000, xlim=(0, duration), show=True)  
+
+# fig, gs = bp.visualize.get_figure(6, 1, 1.5, 10)
+
+# fig.add_subplot(gs[:2, 0])
+# bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, duration))
+# fig.add_subplot(gs[2:4, 0])
+# bp.visualize.line_plot(runner.mon.ts, bm.mean(inputs, axis=1), xlim=(0, duration))
+# fig.add_subplot(gs[4:, 0])
+# bp.visualize.line_plot(runner.mon.ts, bm.mean(runner.mon['E.spike'].astype(bm.float32),axis=1)/0.01*1000, xlim=(0, duration), show=True)  
 
 
 
@@ -144,42 +144,42 @@ bp.visualize.line_plot(runner.mon.ts, bm.mean(runner.mon['E.spike'].astype(bm.fl
 
 
 # ===== Current Visualization ====
-# duration = 100.
+duration = 100.
 
-# WEF = f_E/bm.sqrt(num_ff)
-# WIF = f_I/bm.sqrt(num_ff)
+WEF = f_E/bm.sqrt(num_ff)
+WIF = f_I/bm.sqrt(num_ff)
 
-# E_inp = num_ff * WEF * mu_f * 0.02
-# I_inp = num_ff * WIF * mu_f * 0.02
+E_inp = num_ff * WEF * mu_f * 0.1
+I_inp = num_ff * WIF * mu_f * 0.1
 
-# runner = bp.dyn.DSRunner(net,
-#                          monitors=['E2I.g', 'E2E.g', 'I2I.g', 'I2E.g', 'E.input', 'E.spike', 'I.spike', 'E.V'],
-#                          inputs=[('E.input', E_inp),
-#                                  ('I.input', I_inp)],
-#                          dt=0.01)
+Fc_inp = E_inp
 
-# t = runner.run(duration)
+runner = bp.dyn.DSRunner(net,
+                         monitors=['E2I.g', 'E2E.g', 'I2I.g', 'I2E.g', 'E.input', 'E.spike', 'I.spike', 'E.V'],
+                         inputs=[('E.input', E_inp),
+                                 ('I.input', I_inp)],
+                         dt=0.01)
 
-# # Inspect an E neuron
-# total_inp = runner.mon['E2E.g'] + runner.mon['I2E.g'] + runner.mon['E.input']
-# Ec_inp = runner.mon['E2E.g']
-# Ic_inp = runner.mon['I2E.g']
-# Fc_inp = runner.mon['E.input']
+t = runner.run(duration)
+# Inspect an E neuron
+total_inp = runner.mon['E2E.g'] + runner.mon['I2E.g'] + E_inp
+Ec_inp = runner.mon['E2E.g']
+Ic_inp = runner.mon['I2E.g']
 
-# fig, gs = bp.visualize.get_figure(4, 1, 1.5, 7)
-# fig.add_subplot(gs[:1, 0])
-# bp.visualize.line_plot(runner.mon.ts, total_inp[:,0], xlim=(0, duration), legend='Total')  
-# bp.visualize.line_plot(runner.mon.ts, Ec_inp[:,0], xlim=(0, duration), legend='Excitatory') 
-# bp.visualize.line_plot(runner.mon.ts, Ic_inp[:,0], xlim=(0, duration), legend='Inhibitory')  
+fig, gs = bp.visualize.get_figure(4, 1, 1.5, 7)
+fig.add_subplot(gs[:1, 0])
+bp.visualize.line_plot(runner.mon.ts, total_inp[:,0], xlim=(0, duration), legend='Total')  
+bp.visualize.line_plot(runner.mon.ts, Ec_inp[:,0]+Fc_inp, xlim=(0, duration), legend='Excitatory') 
+bp.visualize.line_plot(runner.mon.ts, Ic_inp[:,0], xlim=(0, duration), legend='Inhibitory')  
 
-# fig.add_subplot(gs[1:2, 0])
-# bp.visualize.line_plot(runner.mon.ts, runner.mon['E.V'], xlim=(0, duration), legend='membrane potential')  
+fig.add_subplot(gs[1:2, 0])
+bp.visualize.line_plot(runner.mon.ts, runner.mon['E.V'], xlim=(0, duration), legend='membrane potential')  
 
-# fig.add_subplot(gs[2:3, 0])
-# bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, duration))
+fig.add_subplot(gs[2:3, 0])
+bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, duration))
 
-# fig.add_subplot(gs[3:, 0])
-# bp.visualize.raster_plot(runner.mon.ts, runner.mon['I.spike'], xlim=(0, duration), show=True)
+fig.add_subplot(gs[3:, 0])
+bp.visualize.raster_plot(runner.mon.ts, runner.mon['I.spike'], xlim=(0, duration), show=True)
 
 
 

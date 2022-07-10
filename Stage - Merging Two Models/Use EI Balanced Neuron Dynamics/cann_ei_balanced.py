@@ -11,7 +11,7 @@ import pdb
 
 bp.math.set_platform('cpu')
 
-size_E, size_I = 5000, 250*5
+size_E, size_I = 1000, 250
 vth = 10
 vreset = 0
 tau_Es = 6. 
@@ -88,8 +88,8 @@ class SCANN(bp.dyn.Network):
         self.x = bm.linspace(-bm.pi, bm.pi, size_E)
 
         # neurons
-        E = LIF(size=size_E, tau=tau_E, vth=vth, vreset=vreset, tau_ref=5)
-        I = LIF(size=size_I, tau=tau_I, vth=vth, vreset=vreset, tau_ref=1)
+        E = LIF(size=size_E, tau=tau_E, vth=vth, vreset=vreset, tau_ref=0)
+        I = LIF(size=size_I, tau=tau_I, vth=vth, vreset=vreset, tau_ref=0)
 
         E.V[:] = bm.random.random(size_E) * (vth - vreset) + vreset
         I.V[:] = bm.random.random(size_I) * (vth - vreset) + vreset
@@ -136,20 +136,20 @@ net = SCANN()
 
 
 # ===== Moving Bump ====
-dur = 2000
-n_step = int(dur / 0.01)
-pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
-inputs = net.get_stimulus_by_pos(pos)
-name = 'cann-moving.gif'
+# dur = 2000
+# n_step = int(dur / 0.01)
+# pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
+# inputs = net.get_stimulus_by_pos(pos)
+# name = 'cann-moving.gif'
 
 
 # ===== Persistent Activity ====
-# inputs = net.get_stimulus_by_pos(0.)
-# inputs, dur = bp.inputs.section_input(values=[inputs, 0.],
-#                                          durations=[500., 500.],
-#                                          return_length=True,
-#                                          dt=0.01)
-# name = 'cann-persistent.gif'
+inputs = net.get_stimulus_by_pos(0.)
+inputs, dur = bp.inputs.section_input(values=[inputs, 0.],
+                                         durations=[500., 500.],
+                                         return_length=True,
+                                         dt=0.01)
+name = 'cann-persistent.gif'
 
 
 
