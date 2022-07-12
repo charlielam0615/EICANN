@@ -24,12 +24,12 @@ gEIp = 0.0175 * 750 * 8 * scale
 gIpE = -0.1603 * 250 * 2 * scale
 gIpIp = -0.0082 * 750 * 30 * scale
 
-gl = 0.012 * 30 * 0
+gl = 0.012 * 30
 
 shunting_k = 0.1
 
-f_E = 6
-f_I = 4
+f_E = 8
+f_I = 6
 mu_f = bm.array(1.0)
 gEE_R = 0.25 / bm.sqrt(size_E) * 20
 gIdE = -1. / bm.sqrt(size_E) * 20
@@ -173,24 +173,26 @@ Iinp_scale = size_ff * WIF
 
 
 # ===== Moving Bump ====
-dur = 2000
-n_step = int(dur / 0.01)
-pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
-sigma_F = 0.0
-noise = sigma_F * bm.random.rand(int(dur/0.01), size_E+size_Id)
-E_inputs = net.get_stimulus_by_pos(pos) + noise[:, :size_E]
-I_inputs = bm.mean(E_inputs, axis=-1, keepdims=True) + noise[:, size_E:]
-name = 'cann-moving.gif'
+# dur = 2000
+# n_step = int(dur / 0.01)
+# pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
+# E_inputs = net.get_stimulus_by_pos(pos)
+# I_inputs = bm.mean(E_inputs, axis=-1, keepdims=True)
+# name = 'cann-moving.gif'
 
 
 # ===== Persistent Activity ====
-# inputs = net.get_stimulus_by_pos(0.)
-# E_inputs, dur = bp.inputs.section_input(values=[inputs, 0.],
-#                                          durations=[500., 500.],
-#                                          return_length=True,
-#                                          dt=0.01)
-# I_inputs = bm.mean(E_inputs, axis=-1, keepdims=True)
-# name = 'cann-persistent.gif'
+inputs = net.get_stimulus_by_pos(0.)
+E_inputs, dur = bp.inputs.section_input(values=[inputs, 0.],
+                                         durations=[500., 500.],
+                                         return_length=True,
+                                         dt=0.01)
+
+
+I_inputs = bm.mean(E_inputs, axis=-1, keepdims=True)
+name = 'cann-persistent.gif'
+
+
 
 runner = bp.dyn.DSRunner(net,
                          jit=True,
@@ -214,6 +216,47 @@ t = runner(dur)
 
 
 
+# ===== Current Visualization =====
+# shunting_inp = shunting_k*runner.mon['E2E.g']*runner.mon['Ip2E.g']
+# Ec_inp = runner.mon['E2E.g']
+# Ic_inp = runner.mon['Id2E.g'] + runner.mon['Ip2E.g'] + shunting_k*runner.mon['E2E.g']*runner.mon['Ip2E.g']
+# Fc_inp = Einp_scale*E_inputs
+# total_inp = Ec_inp + Ic_inp + Fc_inp
+
+# neuron_index = 0
+
+# fig, gs = bp.visualize.get_figure(3, 1, 1.5, 7)
+# fig.add_subplot(gs[:1, 0])
+# bp.visualize.line_plot(runner.mon.ts, total_inp[:,neuron_index], xlim=(0, dur), legend='Total')  
+# bp.visualize.line_plot(runner.mon.ts, Ec_inp[:,neuron_index]+Fc_inp[:,neuron_index], xlim=(0, dur), legend='Excitatory') 
+# bp.visualize.line_plot(runner.mon.ts, Ic_inp[:,neuron_index], xlim=(0, dur), legend='Inhibitory')  
+
+
+# fig.add_subplot(gs[1:3, 0])
+# bp.visualize.line_plot(runner.mon.ts, Ec_inp[:,neuron_index], xlim=(0, dur), legend='rec E input')  
+# bp.visualize.line_plot(runner.mon.ts, runner.mon['Id2E.g'][:,neuron_index], xlim=(0, dur), legend='Id input')
+# bp.visualize.line_plot(runner.mon.ts, runner.mon['Ip2E.g'][:,neuron_index], xlim=(0, dur), legend='Ip input')
+# bp.visualize.line_plot(runner.mon.ts, Fc_inp[:,neuron_index], xlim=(0, dur), legend='ff input')
+# bp.visualize.line_plot(runner.mon.ts, shunting_inp[:,neuron_index], xlim=(0, dur), legend='shunting input')
+
+
+# ===== heat map =====
+
+def moving_average(a, n, axis):
+    ret = bm.cumsum(a, axis=axis, dtype=bm.float32)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n
+
+
+plt.figure()
+firing_rate = moving_average(runner.mon['E.spike'], n=500, axis=0) / (500 * 0.01 / 1000)
+plt.imshow(firing_rate.T, aspect='auto')
+plt.plot(bm.argmax(E_inputs, axis=1), label='input peak', color='red')
+plt.xlim([0, runner.mon.ts.shape[0]])
+plt.show()
+
+
+
 # === GIF Time window: 100ms with dt=0.01 ms ======
 # firing_rate = convolve2d(runner.mon['E.spike'].astype(np.float32), np.ones([10000,1],dtype=np.float32), mode='same') / (10000*0.01/1000)
 
@@ -226,43 +269,5 @@ t = runner(dur)
 #   save_path=name,
 # )  
 
-
-
-# ===== Current Visualization =====
-shunting_inp = shunting_k*runner.mon['E2E.g']*runner.mon['Ip2E.g']
-Ec_inp = runner.mon['E2E.g']
-Ic_inp = runner.mon['Id2E.g'] + runner.mon['Ip2E.g'] + shunting_k*runner.mon['E2E.g']*runner.mon['Ip2E.g']
-Fc_inp = Einp_scale*E_inputs
-total_inp = Ec_inp + Ic_inp + Fc_inp
-
-neuron_index = 0
-
-fig, gs = bp.visualize.get_figure(7, 1, 1.5, 7)
-fig.add_subplot(gs[:1, 0])
-bp.visualize.line_plot(runner.mon.ts, total_inp[:,neuron_index], xlim=(0, dur), legend='Total')  
-bp.visualize.line_plot(runner.mon.ts, Ec_inp[:,neuron_index]+Fc_inp[:,neuron_index], xlim=(0, dur), legend='Excitatory') 
-bp.visualize.line_plot(runner.mon.ts, Ic_inp[:,neuron_index], xlim=(0, dur), legend='Inhibitory')  
-
-
-fig.add_subplot(gs[1:3, 0])
-bp.visualize.line_plot(runner.mon.ts, Ec_inp[:,neuron_index], xlim=(0, dur), legend='rec E input')  
-bp.visualize.line_plot(runner.mon.ts, runner.mon['Id2E.g'][:,neuron_index], xlim=(0, dur), legend='Id input')
-bp.visualize.line_plot(runner.mon.ts, runner.mon['Ip2E.g'][:,neuron_index], xlim=(0, dur), legend='Ip input')
-bp.visualize.line_plot(runner.mon.ts, Fc_inp[:,neuron_index], xlim=(0, dur), legend='ff input')
-bp.visualize.line_plot(runner.mon.ts, shunting_inp[:,neuron_index], xlim=(0, dur), legend='shunting input')
-
-
-fig.add_subplot(gs[3:4, 0])
-bp.visualize.line_plot(runner.mon.ts, runner.mon['E.V'][:,neuron_index], xlim=(0, dur), legend='membrane potential')  
-
-
-fig.add_subplot(gs[4:7, 0])
-bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, dur), show=True)
-
-# fig.add_subplot(gs[5:6, 0])
-# bp.visualize.raster_plot(runner.mon.ts, runner.mon['Ip.spike'], xlim=(0, dur))
-
-# fig.add_subplot(gs[6:7, 0])
-# bp.visualize.raster_plot(runner.mon.ts, runner.mon['Id.spike'], xlim=(0, dur), show=True)
 
 
