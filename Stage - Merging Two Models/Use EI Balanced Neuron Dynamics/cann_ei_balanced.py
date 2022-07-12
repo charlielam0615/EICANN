@@ -18,11 +18,15 @@ tau_Es = 6.
 tau_Is = 5. 
 tau_E = 15.0
 tau_I = 10.0
-gEE = 0.065 * 300 * 4
-gEI = 0.0175 * 750 * 8
-gIE = -0.1603 * 250 * 2
-gII = -0.0082 * 750 * 30
-shunting_k = 1.0
+
+
+scale = 0.1
+
+gEE = 0.065 * 300 * 4 * scale
+gEI = 0.0175 * 750 * 8 * scale
+gIE = -0.1603 * 250 * 2 * scale
+gII = -0.0082 * 750 * 30 * scale
+shunting_k = 0.1
 
 
 class Shunting(TwoEndConn):

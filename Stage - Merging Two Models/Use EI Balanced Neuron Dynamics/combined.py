@@ -18,19 +18,23 @@ tau_Es = 6.
 tau_Is = 5. 
 tau_E = 15.0
 tau_I = 10.0
-gEE = 0.065 * 300 * 4
-gEIp = 0.0175 * 750 * 8
-gIpE = -0.1603 * 250 * 2
-gIpIp = -0.0082 * 750 * 30
-shunting_k = 1.0
+scale = 0.1
+gEE_G = 0.065 * 300 * 4 * scale
+gEIp = 0.0175 * 750 * 8 * scale
+gIpE = -0.1603 * 250 * 2 * scale
+gIpIp = -0.0082 * 750 * 30 * scale
+
+gl = 0.012 * 30 * 0
+
+shunting_k = 0.1
 
 f_E = 6
 f_I = 4
 mu_f = bm.array(1.0)
-# gEE = 0.25 / bm.sqrt(size_E)
-gIdE = -1. / bm.sqrt(size_E)
-gEId = 0.4 / bm.sqrt(size_E)
-gIdId = -1. / bm.sqrt(size_E)
+gEE_R = 0.25 / bm.sqrt(size_E) * 20
+gIdE = -1. / bm.sqrt(size_E) * 20
+gEId = 0.4 / bm.sqrt(size_E) * 20
+gIdId = -1. / bm.sqrt(size_E) * 20
 prob = 0.25
 
 
@@ -51,13 +55,14 @@ class Shunting(TwoEndConn):
 
 
 class LIF(bp.dyn.NeuGroup):
-    def __init__(self, size, tau, vth, vreset, tau_ref, **kwargs):
+    def __init__(self, size, tau, gl, vth, vreset, tau_ref, **kwargs):
         super(LIF, self).__init__(size, **kwargs)
 
         # parameters
         self.size = size
         self.tau = tau
         self.vth = vth
+        self.gl = gl
         self.vreset = vreset
         self.tau_ref = tau_ref
 
@@ -73,7 +78,7 @@ class LIF(bp.dyn.NeuGroup):
         self.integral = bp.odeint(f=self.derivative, method='euler')
 
     def derivative(self, V, t, inputs):
-        dvdt = inputs / self.tau
+        dvdt = (-self.gl*V + inputs) / self.tau
         return dvdt
 
     def update(self, _t, _dt):
@@ -97,9 +102,9 @@ class EICANN(bp.dyn.Network):
         self.x = bm.linspace(-bm.pi, bm.pi, size_E)
 
         # neurons
-        self.E = LIF(size=size_E, tau=tau_E, vth=vth, vreset=vreset, tau_ref=0)
-        self.Ip = LIF(size=size_Ip, tau=tau_I, vth=vth, vreset=vreset, tau_ref=0)
-        self.Id = LIF(size=size_Id, tau=tau_I, vth=vth, vreset=vreset, tau_ref=0)
+        self.E = LIF(size=size_E, gl=gl, tau=tau_E, vth=vth, vreset=vreset, tau_ref=0)
+        self.Ip = LIF(size=size_Ip, gl=gl, tau=tau_I, vth=vth, vreset=vreset, tau_ref=0)
+        self.Id = LIF(size=size_Id, gl=gl, tau=tau_I, vth=vth, vreset=vreset, tau_ref=0)
 
         self.E.V[:] = bm.random.random(size_E) * (vth - vreset) + vreset
         self.Ip.V[:] = bm.random.random(size_Ip) * (vth - vreset) + vreset
@@ -108,15 +113,18 @@ class EICANN(bp.dyn.Network):
         w_ee, w_ei, w_ie, w_ii = self.make_conn(self.x)
 
         # synapses
-        self.E2E = bp.dyn.ExpCUBA(pre=self.E, post=self.E, conn=bp.connect.All2All(), tau=tau_Es, g_max=gEE*w_ee)
-        self.E2Ip = bp.dyn.ExpCUBA(pre=self.E, post=self.Ip, conn=bp.connect.All2All(), tau=tau_Es, g_max=gEIp*w_ei)
-        self.Ip2Ip = bp.dyn.ExpCUBA(pre=self.Ip, post=self.Ip, conn=bp.connect.All2All(), tau=tau_Is, g_max=gIpIp*w_ii)
-        self.Ip2E = bp.dyn.ExpCUBA(pre=self.Ip, post=self.E, conn=bp.connect.All2All(), tau=tau_Is, g_max=gIpE*w_ie)
+        E2E_rand = (bm.random.rand(size_E, size_E) > prob).astype(bm.float32) * gEE_R # max: 0.1581139
+        E2E = E2E_rand + gEE_G*w_ee # latter max: 0.02929084
+
+        self.E2E = bp.dyn.ExpCUBA(pre=self.E, post=self.E, conn=bp.connect.All2All(), tau=tau_Es, g_max=E2E)  # max: 0.18740474
+        self.E2Ip = bp.dyn.ExpCUBA(pre=self.E, post=self.Ip, conn=bp.connect.All2All(), tau=tau_Es, g_max=gEIp*w_ei) # max: 0.042
+        self.Ip2Ip = bp.dyn.ExpCUBA(pre=self.Ip, post=self.Ip, conn=bp.connect.All2All(), tau=tau_Is, g_max=gIpIp*w_ii) # min: -0.0738
+        self.Ip2E = bp.dyn.ExpCUBA(pre=self.Ip, post=self.E, conn=bp.connect.All2All(), tau=tau_Is, g_max=gIpE*w_ie) # min: -0.008015
         self.ESI = Shunting(E2Esyn=self.E2E, I2Esyn=self.Ip2E, k=shunting_k)
 
-        self.E2Id = bp.dyn.ExpCUBA(pre=self.E, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_Es, g_max=gEId)
-        self.Id2Id = bp.dyn.ExpCUBA(pre=self.Id, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIdId)
-        self.Id2E = bp.dyn.ExpCUBA(pre=self.Id, post=self.E, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIdE)
+        self.E2Id = bp.dyn.ExpCUBA(pre=self.E, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_Es, g_max=gEId) # 0.25298223
+        self.Id2Id = bp.dyn.ExpCUBA(pre=self.Id, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIdId) # -0.6324556
+        self.Id2E = bp.dyn.ExpCUBA(pre=self.Id, post=self.E, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIdE) # -0.6324556
 
         # super(SCANN, self).__init__(self.E2E, self.E2Ip, self.Ip2E, self.Ip2Ip, self.ESI, self.E2Id, self.Id2Id, self.Id2E, E=E, Ip=Ip, Id=Id)
         super(EICANN, self).__init__()
@@ -131,6 +139,13 @@ class EICANN(bp.dyn.Network):
         x_right = bm.repeat(x.reshape((1,-1)), len(x), axis=0)
         d = self.dist(x_left-x_right)
         w_ee_ = self.J * bm.exp(-bm.pi * bm.square(d / self.a))
+
+
+        # # add positive bias
+        # w_ee_ = bm.maximum(w_ee_, 0.1 * bm.max(w_ee_))
+
+
+
         w_ee = w_ee_ / bm.sum(w_ee_, axis=-1, keepdims=True)
         const_conn = lambda w, p: (w > 1-p) / np.maximum(np.sum(w > 1-p, axis=-1, keepdims=True), 1)
         w_ei = const_conn(np.random.rand(size_E, size_Ip), 1.0)
@@ -161,8 +176,10 @@ Iinp_scale = size_ff * WIF
 dur = 2000
 n_step = int(dur / 0.01)
 pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
-E_inputs = net.get_stimulus_by_pos(pos)
-I_inputs = bm.mean(E_inputs, axis=-1, keepdims=True)
+sigma_F = 0.0
+noise = sigma_F * bm.random.rand(int(dur/0.01), size_E+size_Id)
+E_inputs = net.get_stimulus_by_pos(pos) + noise[:, :size_E]
+I_inputs = bm.mean(E_inputs, axis=-1, keepdims=True) + noise[:, size_E:]
 name = 'cann-moving.gif'
 
 
@@ -212,28 +229,40 @@ t = runner(dur)
 
 
 # ===== Current Visualization =====
-total_inp = runner.mon['E2E.g'] + runner.mon['Ip2E.g'] + shunting_k*runner.mon['E2E.g']*runner.mon['Ip2E.g'] + runner.mon['Id2E.g'] + Einp_scale*E_inputs
+shunting_inp = shunting_k*runner.mon['E2E.g']*runner.mon['Ip2E.g']
 Ec_inp = runner.mon['E2E.g']
 Ic_inp = runner.mon['Id2E.g'] + runner.mon['Ip2E.g'] + shunting_k*runner.mon['E2E.g']*runner.mon['Ip2E.g']
 Fc_inp = Einp_scale*E_inputs
+total_inp = Ec_inp + Ic_inp + Fc_inp
 
+neuron_index = 0
 
-fig, gs = bp.visualize.get_figure(3, 1, 1.5, 7)
+fig, gs = bp.visualize.get_figure(7, 1, 1.5, 7)
 fig.add_subplot(gs[:1, 0])
-bp.visualize.line_plot(runner.mon.ts, total_inp[:,500], xlim=(0, dur), legend='Total')  
-bp.visualize.line_plot(runner.mon.ts, Ec_inp[:,500]+Fc_inp[:,500], xlim=(0, dur), legend='Excitatory') 
-bp.visualize.line_plot(runner.mon.ts, Ic_inp[:,500], xlim=(0, dur), legend='Inhibitory')  
+bp.visualize.line_plot(runner.mon.ts, total_inp[:,neuron_index], xlim=(0, dur), legend='Total')  
+bp.visualize.line_plot(runner.mon.ts, Ec_inp[:,neuron_index]+Fc_inp[:,neuron_index], xlim=(0, dur), legend='Excitatory') 
+bp.visualize.line_plot(runner.mon.ts, Ic_inp[:,neuron_index], xlim=(0, dur), legend='Inhibitory')  
 
-fig.add_subplot(gs[1:2, 0])
-bp.visualize.line_plot(runner.mon.ts, runner.mon['E.V'][:,500], xlim=(0, dur), legend='membrane potential')  
 
-fig.add_subplot(gs[2:3, 0])
-bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'][:, 495:505], xlim=(0, dur), show=True)
+fig.add_subplot(gs[1:3, 0])
+bp.visualize.line_plot(runner.mon.ts, Ec_inp[:,neuron_index], xlim=(0, dur), legend='rec E input')  
+bp.visualize.line_plot(runner.mon.ts, runner.mon['Id2E.g'][:,neuron_index], xlim=(0, dur), legend='Id input')
+bp.visualize.line_plot(runner.mon.ts, runner.mon['Ip2E.g'][:,neuron_index], xlim=(0, dur), legend='Ip input')
+bp.visualize.line_plot(runner.mon.ts, Fc_inp[:,neuron_index], xlim=(0, dur), legend='ff input')
+bp.visualize.line_plot(runner.mon.ts, shunting_inp[:,neuron_index], xlim=(0, dur), legend='shunting input')
 
-# fig.add_subplot(gs[3:4, 0])
+
+fig.add_subplot(gs[3:4, 0])
+bp.visualize.line_plot(runner.mon.ts, runner.mon['E.V'][:,neuron_index], xlim=(0, dur), legend='membrane potential')  
+
+
+fig.add_subplot(gs[4:7, 0])
+bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, dur), show=True)
+
+# fig.add_subplot(gs[5:6, 0])
 # bp.visualize.raster_plot(runner.mon.ts, runner.mon['Ip.spike'], xlim=(0, dur))
 
-# fig.add_subplot(gs[4:, 0])
+# fig.add_subplot(gs[6:7, 0])
 # bp.visualize.raster_plot(runner.mon.ts, runner.mon['Id.spike'], xlim=(0, dur), show=True)
 
 

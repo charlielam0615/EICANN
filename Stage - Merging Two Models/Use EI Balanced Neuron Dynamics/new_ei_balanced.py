@@ -6,7 +6,7 @@ import pdb
 bp.math.set_platform('cpu')
 
 # set parameters
-num = 5000
+num = 1000
 num_inh = num
 num_exc = num
 num_ff = num
@@ -109,29 +109,29 @@ net = EINet()
 
 
 # ===== Amplitude Tracking =====
-duration = 100.
-ramp_inp = bp.inputs.ramp_input(c_start=0.1*mu_f, c_end=1.5*mu_f, duration=duration/2, dt=0.01)
-inputs = bm.ones([int(duration/0.01), num_exc+num_inh]) * 0.1*mu_f
-inputs[int(duration/0.01/4):int(duration/0.01/4)+len(ramp_inp)] = ramp_inp[:,None]
-inputs[int(duration/0.01/4)+len(ramp_inp):] = 1.0 * mu_f
-sigma_F = inputs * 1.0
-noise = sigma_F * bm.random.randn(int(duration/0.01), num_exc+num_inh)
+# duration = 100.
+# ramp_inp = bp.inputs.ramp_input(c_start=0.1*mu_f, c_end=1.5*mu_f, duration=duration/2, dt=0.01)
+# inputs = bm.ones([int(duration/0.01), num_exc+num_inh]) * 0.1*mu_f
+# inputs[int(duration/0.01/4):int(duration/0.01/4)+len(ramp_inp)] = ramp_inp[:,None]
+# inputs[int(duration/0.01/4)+len(ramp_inp):] = 1.0 * mu_f
+# sigma_F = inputs * 1.0
+# noise = sigma_F * bm.random.randn(int(duration/0.01), num_exc+num_inh)
 
-E_inp = num_ff * f_E * (inputs[:, :num_exc] + noise[:, :num_exc])
-I_inp = num_ff * f_I * (inputs[:, num_exc:] + noise[:, num_exc:])
+# E_inp = num_ff * f_E * (inputs[:, :num_exc] + noise[:, :num_exc])
+# I_inp = num_ff * f_I * (inputs[:, num_exc:] + noise[:, num_exc:])
 
-runner = bp.dyn.DSRunner(net,
-                         monitors=['E2I.g', 'E2E.g', 'I2I.g', 'I2E.g', 'E.input', 'E.spike', 'I.spike', 'E.V'],
-                         inputs=[('E.input', E_inp, 'iter'),
-                                 ('I.input', I_inp, 'iter')],
-                         dt=0.01)
+# runner = bp.dyn.DSRunner(net,
+#                          monitors=['E2I.g', 'E2E.g', 'I2I.g', 'I2E.g', 'E.input', 'E.spike', 'I.spike', 'E.V'],
+#                          inputs=[('E.input', E_inp, 'iter'),
+#                                  ('I.input', I_inp, 'iter')],
+#                          dt=0.01)
 
-t = runner.run(duration)
+# t = runner.run(duration)
 
-fig, gs = bp.visualize.get_figure(2, 1, 1.5, 10)
-fig.add_subplot(gs[:, 0])
-bp.visualize.line_plot(runner.mon.ts, 2.5e2*bm.mean(runner.mon['E.spike'].astype(bm.float32),axis=1), xlim=(0, duration))  
-bp.visualize.line_plot(runner.mon.ts, bm.mean(inputs, axis=1), xlim=(0, duration), show=True)  
+# fig, gs = bp.visualize.get_figure(2, 1, 1.5, 10)
+# fig.add_subplot(gs[:, 0])
+# bp.visualize.line_plot(runner.mon.ts, 2.5e2*bm.mean(runner.mon['E.spike'].astype(bm.float32),axis=1), xlim=(0, duration))  
+# bp.visualize.line_plot(runner.mon.ts, bm.mean(inputs, axis=1), xlim=(0, duration), show=True)  
 
 
 # ===== Current Visualization ====
@@ -169,5 +169,28 @@ bp.visualize.line_plot(runner.mon.ts, bm.mean(inputs, axis=1), xlim=(0, duration
 # fig.add_subplot(gs[3:, 0])
 # bp.visualize.raster_plot(runner.mon.ts, runner.mon['I.spike'], xlim=(0, duration), show=True)
 
+# ====== Membrane potential distribution ======
+duration = 100.
+
+E_inp = num_ff * f_E * mu_f
+I_inp = num_ff * f_I * mu_f
+
+Fc_inp = E_inp
+
+runner = bp.dyn.DSRunner(net,
+                         monitors=['E.V'],
+                         inputs=[('E.input', E_inp),
+                                 ('I.input', I_inp)],
+                         dt=0.01)
+
+t = runner.run(duration)
+
+plt.subplot(3,1,1)
+plt.hist(runner.mon['E.V'][100], bins=20)
+plt.subplot(3,1,2)
+plt.hist(runner.mon['E.V'][1000], bins=20)
+plt.subplot(3,1,3)
+plt.hist(runner.mon['E.V'][5000], bins=20)
+plt.show()
 
 
