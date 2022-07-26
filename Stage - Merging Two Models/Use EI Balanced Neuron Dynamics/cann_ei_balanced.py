@@ -11,48 +11,53 @@ import pdb
 
 bp.math.set_platform('cpu')
 
-size_E, size_I = 1000, 250
-vth = 10
+size_E, size_I, size_ff = 1000, 250, 250
+vth = 9
 vreset = 0
 tau_Es = 6. 
 tau_Is = 5. 
 tau_E = 15.0
 tau_I = 10.0
 
-
-scale = 0.1
-
+scale = 1.0
 gEE = 0.065 * 300 * 4 * scale
 gEI = 0.0175 * 750 * 8 * scale
 gIE = -0.1603 * 250 * 2 * scale
 gII = -0.0082 * 750 * 30 * scale
-shunting_k = 0.1
+
+# gl = 0.012 * 100 * scale
+gl = 0
+shunting_k = 1.0
+f_E = 2 /bm.sqrt(size_ff) * 0.6
+input_amp = 2.
 
 
 class Shunting(TwoEndConn):
-    def __init__(self, E2Esyn, I2Esyn, k):
+    def __init__(self, E2Esyn, I2Esyn, k, EGroup):
         super().__init__(pre=E2Esyn.pre, post=I2Esyn.post, conn=None)
         self.E2Esyn = E2Esyn
         self.I2Esyn = I2Esyn
+        self.EGroup = EGroup
         self.k = k
 
         assert self.E2Esyn.post == self.I2Esyn.post
         self.post = self.E2Esyn.post
 
     def update(self, t, dt):
-        E_inp = self.E2Esyn.output_value
+        E_inp = self.E2Esyn.output_value + self.EGroup.ext_input
         I_inp = self.I2Esyn.output_value
         self.post.input += self.k * E_inp * I_inp
 
 
 class LIF(bp.dyn.NeuGroup):
-    def __init__(self, size, tau, vth, vreset, tau_ref, **kwargs):
+    def __init__(self, size, tau, gl, vth, vreset, tau_ref, **kwargs):
         super(LIF, self).__init__(size, **kwargs)
 
         # parameters
         self.size = size
         self.tau = tau
         self.vth = vth
+        self.gl = gl
         self.vreset = vreset
         self.tau_ref = tau_ref
 
@@ -62,18 +67,19 @@ class LIF(bp.dyn.NeuGroup):
         self.t_last_spike = bm.Variable(bm.ones(self.size) * -1e7)
         self.refractory = bm.Variable(bm.zeros(self.size, dtype=bool))
         self.spike = bm.Variable(bm.zeros(self.size, dtype=bool))
+        self.ext_input = bm.Variable(bm.zeros(self.size))
 
         # integral
         # self.integral = bp.odeint(f=self.derivative, method='exp_auto')
         self.integral = bp.odeint(f=self.derivative, method='euler')
 
-    def derivative(self, V, t, inputs):
-        dvdt = inputs / self.tau
+    def derivative(self, V, t, inputs, ext_input):
+        dvdt = (-self.gl*V + inputs + ext_input) / self.tau
         return dvdt
 
     def update(self, _t, _dt):
         refractory = (_t - self.t_last_spike) <= self.tau_ref
-        V = self.integral(self.V, _t, self.input, dt=_dt)
+        V = self.integral(self.V, _t, self.input, self.ext_input, dt=_dt)
         V = bm.where(refractory, self.V, V)
         spike = self.vth <= V
         self.spike.value = spike
@@ -87,27 +93,26 @@ class SCANN(bp.dyn.Network):
     def __init__(self):
         self.a = bm.sqrt(2*bm.pi) * (bm.pi/6)
         self.J = 4.
-        # self.A = 0.48
-        self.A = 2.
+        self.A = input_amp
         self.x = bm.linspace(-bm.pi, bm.pi, size_E)
 
         # neurons
-        E = LIF(size=size_E, tau=tau_E, vth=vth, vreset=vreset, tau_ref=0)
-        I = LIF(size=size_I, tau=tau_I, vth=vth, vreset=vreset, tau_ref=0)
+        self.E = LIF(size=size_E, gl=gl, tau=tau_E, vth=vth, vreset=vreset, tau_ref=0)
+        self.I = LIF(size=size_I, gl=gl, tau=tau_I, vth=vth, vreset=vreset, tau_ref=0)
 
-        E.V[:] = bm.random.random(size_E) * (vth - vreset) + vreset
-        I.V[:] = bm.random.random(size_I) * (vth - vreset) + vreset
+        self.E.V[:] = bm.random.random(size_E) * (vth - vreset) + vreset
+        self.I.V[:] = bm.random.random(size_I) * (vth - vreset) + vreset
 
         w_ee, w_ei, w_ie, w_ii = self.make_conn(self.x)
 
         # synapses
-        self.E2E = bp.dyn.ExpCUBA(pre=E, post=E, conn=bp.connect.All2All(), tau=tau_Es, g_max=gEE*w_ee)
-        self.E2I = bp.dyn.ExpCUBA(pre=E, post=I, conn=bp.connect.All2All(), tau=tau_Es, g_max=gEI*w_ei)
-        self.I2I = bp.dyn.ExpCUBA(pre=I, post=I, conn=bp.connect.All2All(), tau=tau_Is, g_max=gII*w_ii)
-        self.I2E = bp.dyn.ExpCUBA(pre=I, post=E, conn=bp.connect.All2All(), tau=tau_Is, g_max=gIE*w_ie)
-        self.ESI = Shunting(E2Esyn=self.E2E, I2Esyn=self.I2E, k=shunting_k)
+        self.E2E = bp.dyn.ExpCUBA(pre=self.E, post=self.E, conn=bp.connect.All2All(), tau=tau_Es, g_max=gEE*w_ee)
+        self.E2I = bp.dyn.ExpCUBA(pre=self.E, post=self.I, conn=bp.connect.All2All(), tau=tau_Es, g_max=gEI*w_ei)
+        self.I2I = bp.dyn.ExpCUBA(pre=self.I, post=self.I, conn=bp.connect.All2All(), tau=tau_Is, g_max=gII*w_ii)
+        self.I2E = bp.dyn.ExpCUBA(pre=self.I, post=self.E, conn=bp.connect.All2All(), tau=tau_Is, g_max=gIE*w_ie)
+        self.ESI = Shunting(E2Esyn=self.E2E, I2Esyn=self.I2E, k=shunting_k, EGroup=self.E)
 
-        super(SCANN, self).__init__(self.E2E, self.E2I, self.I2E, self.I2I, self.ESI, E=E, I=I)
+        super(SCANN, self).__init__()
 
     def dist(self, d):
         d = bm.remainder(d, 2*bm.pi)
@@ -140,19 +145,21 @@ net = SCANN()
 
 
 # ===== Moving Bump ====
-# dur = 2000
+# dur = 1000
 # n_step = int(dur / 0.01)
-# pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
+# pos = bm.linspace(-2*bm.pi/3, 50*bm.pi/3, n_step)[:,None]
 # inputs = net.get_stimulus_by_pos(pos)
 # name = 'cann-moving.gif'
 
 
 # ===== Persistent Activity ====
 inputs = net.get_stimulus_by_pos(0.)
-inputs, dur = bp.inputs.section_input(values=[inputs, 0.],
-                                         durations=[500., 500.],
+bg_inputs = 0.
+inputs, dur = bp.inputs.section_input(values=[bg_inputs, bg_inputs+inputs, bg_inputs],
+                                         durations=[300., 500., 500.],
                                          return_length=True,
                                          dt=0.01)
+Einp_scale = size_ff * f_E
 name = 'cann-persistent.gif'
 
 
@@ -160,25 +167,50 @@ name = 'cann-persistent.gif'
 runner = bp.dyn.DSRunner(net,
                          jit=True,
                          monitors=['E2I.g', 'E2E.g', 'I2E.g', 'I2I.g', 'I.V', 'E.V', 'E.spike', 'I.spike'],
-                         inputs=[('E.input', inputs, 'iter'),
-                                 ('I.input', 0.)],
+                         inputs=[('E.ext_input', Einp_scale * inputs, 'iter', '='),
+                                 ('I.ext_input', 0.)],
                          dt=0.01)
 t = runner(dur)
 
-# e2i_inp = runner.mon['E2I.g'] * (ve - runner.mon['I.V'])
-# e2e_inp = runner.mon['E2E.g'] * (ve - runner.mon['E.V'])
-# i2e_inp = runner.mon['I2E.g'] * (vi - runner.mon['E.V'])
-# i2i_inp = runner.mon['I2I.g'] * (vi - runner.mon['I.V'])
+
+# ==== raster plot =====
+# fig, gs = bp.visualize.get_figure(5, 1, 1.5, 10)
+
+# fig.add_subplot(gs[:3, 0])
+# bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, dur), ylim=[0,size_E])
+
+# fig.add_subplot(gs[3:, 0])
+# bp.visualize.raster_plot(runner.mon.ts, runner.mon['I.spike'], xlim=(0, dur), ylim=[0,size_I], show=True)  
 
 
-# # visualization
-fig, gs = bp.visualize.get_figure(5, 1, 1.5, 10)
+# ===== heat map =====
 
-fig.add_subplot(gs[:3, 0])
-bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, dur), ylim=[0,size_E])
+def moving_average(a, n, axis):
+    ret = bm.cumsum(a, axis=axis, dtype=bm.float32)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n
 
-fig.add_subplot(gs[3:, 0])
-bp.visualize.raster_plot(runner.mon.ts, runner.mon['I.spike'], xlim=(0, dur), ylim=[0,size_I], show=True)  
+
+plt.figure()
+T = 500
+ma = moving_average(runner.mon['E.spike'], n=T, axis=0)# average window: 5ms
+bump_activity = bm.mean(ma[:,400:600], axis=1)
+firing_rate = ma / (T * 0.01 / 1000) 
+plt.subplot(2,1,1)
+plt.plot(bump_activity / bm.max(bump_activity))
+plt.plot(inputs[T-1:,500] / bm.max(inputs[T-1:,500]))
+plt.subplot(2,1,2)
+plt.imshow(firing_rate.T, aspect='auto')
+plt.plot(bm.argmax(inputs, axis=1)[T-1:], label='input peak', color='red')
+plt.xlim([0, runner.mon.ts.shape[0]])
+plt.show()
+
+# ====== membrane potential ======
+# fig, gs = bp.visualize.get_figure(2, 2, 1.5, 7)
+# fig.add_subplot(gs[:2, 0])
+# neuron_index = 500
+# bp.visualize.line_plot(runner.mon.ts, runner.mon['E.V'][:,neuron_index], xlim=(0, dur), legend='mem potential', show=True)
+
 
 
 
