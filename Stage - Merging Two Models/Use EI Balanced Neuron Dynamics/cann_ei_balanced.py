@@ -12,7 +12,7 @@ import pdb
 bp.math.set_platform('cpu')
 
 size_E, size_I, size_ff = 1000, 250, 250
-vth = 9
+vth = 8
 vreset = 0
 tau_Es = 6. 
 tau_Is = 5. 
@@ -156,7 +156,7 @@ net = SCANN()
 inputs = net.get_stimulus_by_pos(0.)
 bg_inputs = 0.
 inputs, dur = bp.inputs.section_input(values=[bg_inputs, bg_inputs+inputs, bg_inputs],
-                                         durations=[300., 500., 500.],
+                                         durations=[300., 50., 50.],
                                          return_length=True,
                                          dt=0.01)
 Einp_scale = size_ff * f_E
@@ -192,17 +192,18 @@ def moving_average(a, n, axis):
 
 
 plt.figure()
-T = 500
-ma = moving_average(runner.mon['E.spike'], n=T, axis=0)# average window: 5ms
+T = 1000
+ma = moving_average(runner.mon['E.spike'], n=T, axis=0)# average window: 1ms
 bump_activity = bm.mean(ma[:,400:600], axis=1)
 firing_rate = ma / (T * 0.01 / 1000) 
 plt.subplot(2,1,1)
 plt.plot(bump_activity / bm.max(bump_activity))
 plt.plot(inputs[T-1:,500] / bm.max(inputs[T-1:,500]))
+plt.xlim([int(runner.mon.ts.shape[0]*0.6), runner.mon.ts.shape[0]])
 plt.subplot(2,1,2)
 plt.imshow(firing_rate.T, aspect='auto')
 plt.plot(bm.argmax(inputs, axis=1)[T-1:], label='input peak', color='red')
-plt.xlim([0, runner.mon.ts.shape[0]])
+plt.xlim([int(runner.mon.ts.shape[0]*0.6), runner.mon.ts.shape[0]])
 plt.show()
 
 # ====== membrane potential ======

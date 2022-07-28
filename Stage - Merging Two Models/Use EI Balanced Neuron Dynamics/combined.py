@@ -140,27 +140,27 @@ tau_E = 15.0
 tau_I = 10.0
 
 cann_scale = 1.0
-gEE_G = 0.065 * 300 * 4 * cann_scale
-gEIp = 0.0175 * 750 * 8 * cann_scale
+gEE_G = 0.065 * 300 * 8 * cann_scale # 4
+gEIp = 0.0175 * 750 * 11 * cann_scale # 8
 gIpE = -0.1603 * 250 * 2 * cann_scale
 gIpIp = -0.0082 * 750 * 30 * cann_scale
 
 # gl = 0.012 * 100 * cann_scale
 gl = 0
 
-shunting_k = 1.0
+shunting_k = 0.25 # 1.0
 input_amp = 2.
 
 
 vth = 9
-f_E = 2 /bm.sqrt(size_ff) * 0.6
+f_E = 2 /bm.sqrt(size_ff) * 0.6 * 2
 f_I = 1 /bm.sqrt(size_ff) * 0.6
 
 ei_scale = 70
-gIdE = -2.0 / bm.sqrt(size_E) * ei_scale # -0.75
+gIdE = -2.0 / bm.sqrt(size_E) * ei_scale
 gIdId = -2.0 / bm.sqrt(size_E) * ei_scale
-gEE_R = 0.25 / bm.sqrt(size_E) * ei_scale
-gEId = 0.4 / bm.sqrt(size_E) * ei_scale
+gEE_R = 0.25 / bm.sqrt(size_E) * ei_scale * 2
+gEId = 0.9 / bm.sqrt(size_E) * ei_scale # 0.4
 
 prob = 0.25
 
@@ -241,17 +241,17 @@ class EICANN(bp.dyn.Network):
 
         # synapses
         E2E_rand = (bm.random.rand(size_E, size_E) > prob).astype(bm.float32) * gEE_R
-        E2E = E2E_rand + gEE_G*w_ee
+        E2E = E2E_rand + gEE_G*w_ee # mean: 0.41457522, 0.039
         
-        self.E2E = ExpCUBA(pre=self.E, post=self.E, conn=bp.connect.All2All(), tau=tau_Es, g_max=E2E) # mean: 0.23983842
-        self.E2Ip = ExpCUBA(pre=self.E, post=self.Ip, conn=bp.connect.All2All(), tau=tau_Es, g_max=gEIp*w_ei) # mean: 0.16799994
-        self.Ip2Ip = ExpCUBA(pre=self.Ip, post=self.Ip, conn=bp.connect.All2All(), tau=tau_Is, g_max=gIpIp*w_ii) # mean: -0.2952
-        self.Ip2E = ExpCUBA(pre=self.Ip, post=self.E, conn=bp.connect.All2All(), tau=tau_Is, g_max=gIpE*w_ie) # mean: -0.0160
+        self.E2E = ExpCUBA(pre=self.E, post=self.E, conn=bp.connect.All2All(), tau=tau_Es, g_max=E2E) # mean: 0.4917864
+        self.E2Ip = ExpCUBA(pre=self.E, post=self.Ip, conn=bp.connect.All2All(), tau=tau_Es, g_max=gEIp*w_ei) # mean: 0.42
+        self.Ip2Ip = ExpCUBA(pre=self.Ip, post=self.Ip, conn=bp.connect.All2All(), tau=tau_Is, g_max=gIpIp*w_ii) # mean: -0.738
+        self.Ip2E = ExpCUBA(pre=self.Ip, post=self.E, conn=bp.connect.All2All(), tau=tau_Is, g_max=gIpE*w_ie) # mean: -0.08015
         self.ESI = Shunting(E2Esyn=self.E2E, I2Esyn=self.Ip2E, k=shunting_k, EGroup=self.E)
 
-        self.E2Id = ExpCUBA(pre=self.E, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_Es, g_max=gEId) # mean: 0.3794733 / 4
-        self.Id2Id = ExpCUBA(pre=self.Id, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIdId) # mean: -0.9486833 / 4
-        self.Id2E = ExpCUBA(pre=self.Id, post=self.E, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIdE) # mean: -0.9486833 / 4
+        self.E2Id = ExpCUBA(pre=self.E, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_Es, g_max=gEId) # mean: 0.8854378
+        self.Id2Id = ExpCUBA(pre=self.Id, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIdId) # mean: -4.427189
+        self.Id2E = ExpCUBA(pre=self.Id, post=self.E, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIdE) # mean: -4.427189
 
         super(EICANN, self).__init__()
 
@@ -314,33 +314,42 @@ fig, gs = bp.visualize.get_figure(3, 1, 1.5, 10)
 fig.add_subplot(gs[:1, 0])
 bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, dur), ylim=[0,size_E])
 bp.visualize.line_plot(runner.mon.ts, bm.argmax(E_inputs, axis=1), xlim=(0, dur), legend='input peak')
+# plt.xlim([runner.mon.ts[-1]*0.6, runner.mon.ts[-1]])
+plt.xlim([0, runner.mon.ts[-1]])
 
 fig.add_subplot(gs[1:2, 0])
 bp.visualize.raster_plot(runner.mon.ts, runner.mon['Ip.spike'], xlim=(0, dur), ylim=[0,size_Ip])  
+# plt.xlim([runner.mon.ts[-1]*0.6, runner.mon.ts[-1]])
+plt.xlim([0, runner.mon.ts[-1]])
 
 fig.add_subplot(gs[2:3, 0])
-bp.visualize.raster_plot(runner.mon.ts, runner.mon['Id.spike'], xlim=(0, dur), ylim=[0,size_Id], show=True)  
+bp.visualize.raster_plot(runner.mon.ts, runner.mon['Id.spike'], xlim=(0, dur), ylim=[0,size_Id]) 
+# plt.xlim([runner.mon.ts[-1]*0.6, runner.mon.ts[-1]])
+plt.xlim([0, runner.mon.ts[-1]])
+plt.show()
 
 
 # ===== Current Visualization =====
-# Ec_inp = runner.mon['E2E.g']
-# Fc_inp = Einp_scale*E_inputs
-# shunting_inp = shunting_k*(runner.mon['E2E.g']+Fc_inp)*runner.mon['Ip2E.g']
-# r_SI = shunting_k*runner.mon['E2E.g']*runner.mon['Ip2E.g']
-# Ic_inp = runner.mon['Id2E.g'] + runner.mon['Ip2E.g'] + shunting_inp
-# total_inp = Ec_inp + Ic_inp + Fc_inp
+Ec_inp = runner.mon['E2E.g']
+Fc_inp = Einp_scale*E_inputs
+shunting_inp = shunting_k*(runner.mon['E2E.g']+Fc_inp)*runner.mon['Ip2E.g']
+r_SI = shunting_k*runner.mon['E2E.g']*runner.mon['Ip2E.g']
+Ic_inp = runner.mon['Id2E.g'] + runner.mon['Ip2E.g'] + shunting_inp
+total_inp = Ec_inp + Ic_inp + Fc_inp
 
-# fig, gs = bp.visualize.get_figure(4, 1, 1.5, 7)
+fig, gs = bp.visualize.get_figure(4, 1, 1.5, 7)
 
-# neuron_index = 500
-# fig.add_subplot(gs[:2, 0])
-# bp.visualize.line_plot(runner.mon.ts, (total_inp-Fc_inp)[:,neuron_index], xlim=(0, dur), legend='Total')  
-# bp.visualize.line_plot(runner.mon.ts, Ec_inp[:,neuron_index], xlim=(0, dur), legend='Excitatory') 
-# bp.visualize.line_plot(runner.mon.ts, (Ic_inp-shunting_inp)[:,neuron_index], xlim=(0, dur), legend='Inhibitory')  
+neuron_index = 500
+fig.add_subplot(gs[:2, 0])
+bp.visualize.line_plot(runner.mon.ts, total_inp[:,neuron_index], xlim=(0, dur), legend='Total')  
+bp.visualize.line_plot(runner.mon.ts, Fc_inp[:,neuron_index], xlim=(0, dur), legend='Fc')  
+bp.visualize.line_plot(runner.mon.ts, Ec_inp[:,neuron_index], xlim=(0, dur), legend='Exc Rec') 
+bp.visualize.line_plot(runner.mon.ts, (Ic_inp-shunting_inp)[:,neuron_index], xlim=(0, dur), legend='Inh (ex. SI)')  
+bp.visualize.line_plot(runner.mon.ts, shunting_inp[:,neuron_index], xlim=(0, dur), legend='SI')  
 
-# fig.add_subplot(gs[2:, 0])
-# bp.visualize.line_plot(runner.mon.ts, (Ic_inp-shunting_inp)[:,neuron_index], xlim=(0, dur), legend='Id+Ip')  
-# bp.visualize.line_plot(runner.mon.ts, r_SI[:,neuron_index], xlim=(0, dur), legend='SI', show=True) 
+fig.add_subplot(gs[2:, 0])
+bp.visualize.line_plot(runner.mon.ts, (Ic_inp-shunting_inp)[:,neuron_index], xlim=(0, dur), legend='Id+Ip')  
+bp.visualize.line_plot(runner.mon.ts, r_SI[:,neuron_index], xlim=(0, dur), legend='SI (ex. Fc)', show=True) 
 
 
 # ==== membrane potential and ff input ====
@@ -361,25 +370,30 @@ bp.visualize.raster_plot(runner.mon.ts, runner.mon['Id.spike'], xlim=(0, dur), y
 
 # ===== heat map =====
 
-# def moving_average(a, n, axis):
-#     ret = bm.cumsum(a, axis=axis, dtype=bm.float32)
-#     ret[n:] = ret[n:] - ret[:-n]
-#     return ret[n - 1:] / n
+def moving_average(a, n, axis):
+    ret = bm.cumsum(a, axis=axis, dtype=bm.float32)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n
 
 
-# plt.figure()
-# T = 1000
-# ma = moving_average(runner.mon['E.spike'], n=T, axis=0) # average window: 10ms
-# bump_activity = bm.mean(ma[:,400:600], axis=1)
-# firing_rate = ma / (T * 0.01 / 1000) 
-# plt.subplot(2,1,1)
-# plt.plot(bump_activity / bm.max(bump_activity))
-# plt.plot(E_inputs[T-1:,500] / bm.max(E_inputs[T-1:,500]))
-# plt.subplot(2,1,2)
-# plt.imshow(firing_rate.T, aspect='auto', cmap='gray')
-# plt.plot(bm.argmax(E_inputs, axis=1)[T-1:], label='input peak', color='red')
-# plt.xlim([0, runner.mon.ts.shape[0]])
-# plt.show()
+plt.figure()
+T = 100
+ma = moving_average(runner.mon['E.spike'], n=T, axis=0) # average window: 1ms
+bump_activity = bm.vstack([bm.sum(ma * bm.cos(net.x[None,]), axis=1),bm.sum(ma * bm.sin(net.x[None,]), axis=1)])
+readout = bm.array([[1., 0.]]) @ bump_activity
+firing_rate = ma / (T * 0.01 / 1000) 
+plt.subplot(2,1,1)
+plt.plot(readout.T / bm.max(readout))
+plt.plot(E_inputs[T-1:,500] / bm.max(E_inputs[T-1:,500]))
+# plt.xlim([int(runner.mon.ts.shape[0]*0.6), runner.mon.ts.shape[0]])
+plt.xlim([0, runner.mon.ts.shape[0]])
+
+plt.subplot(2,1,2)
+plt.imshow(firing_rate.T, aspect='auto', cmap='gray_r')
+plt.plot(bm.argmax(E_inputs, axis=1)[T-1:], label='input peak', color='red')
+# plt.xlim([int(runner.mon.ts.shape[0]*0.6), runner.mon.ts.shape[0]])
+plt.xlim([0, runner.mon.ts.shape[0]])
+plt.show()
 
 
 
