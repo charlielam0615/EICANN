@@ -13,6 +13,7 @@ from brainpy.integrators import odeint, JointEq
 
 import pdb
 
+global_dt = 0.01
 
 # ======= Copied and modified from brainpy source ======
 
@@ -141,26 +142,27 @@ tau_I = 10.0
 
 cann_scale = 1.0
 gEE_G = 0.065 * 300 * 8 * cann_scale # 4
-gEIp = 0.0175 * 750 * 11 * cann_scale # 8
+gEIp = 0.0175 * 750 * 11 * cann_scale # 11
 gIpE = -0.1603 * 250 * 2 * cann_scale
 gIpIp = -0.0082 * 750 * 30 * cann_scale
 
 # gl = 0.012 * 100 * cann_scale
-gl = 0
+gl = 0.012 * 3 * cann_scale
 
 shunting_k = 0.25 # 1.0
 input_amp = 2.
 
 
 vth = 9
-f_E = 2 /bm.sqrt(size_ff) * 0.6 * 2
+f_E = 2 /bm.sqrt(size_ff) * 0.6 * 2 # *1
 f_I = 1 /bm.sqrt(size_ff) * 0.6
+bg_str = 0.125
 
 ei_scale = 70
 gIdE = -2.0 / bm.sqrt(size_E) * ei_scale
 gIdId = -2.0 / bm.sqrt(size_E) * ei_scale
-gEE_R = 0.25 / bm.sqrt(size_E) * ei_scale * 2
-gEId = 0.9 / bm.sqrt(size_E) * ei_scale # 0.4
+gEE_R = 0.25 / bm.sqrt(size_E) * ei_scale *2 # *1
+gEId = 1.0 / bm.sqrt(size_E) * ei_scale # 0.9
 
 prob = 0.25
 
@@ -195,7 +197,7 @@ class LIF(bp.dyn.NeuGroup):
         self.tau_ref = tau_ref
 
         # variables
-        self.V = bm.Variable(bm.random.randn(self.size) + vreset)
+        self.V = bm.Variable(bm.random.rand(self.size) * (vth-vreset) + vreset)
         self.input = bm.Variable(bm.zeros(self.size))
         self.t_last_spike = bm.Variable(bm.ones(self.size) * -1e7)
         self.refractory = bm.Variable(bm.zeros(self.size, dtype=bool))
@@ -289,11 +291,11 @@ Iinp_scale = size_ff * f_I
 
 # ===== Persistent Activity ====
 inputs = net.get_stimulus_by_pos(0.)
-bg_inputs = 0.125 * net.A
+bg_inputs = bg_str * net.A
 E_inputs, dur = bp.inputs.section_input(values=[bg_inputs, inputs+bg_inputs, bg_inputs],
-                                         durations=[300., 500., 500.],
+                                         durations=[300., 600., 500.],
                                          return_length=True,
-                                         dt=0.01)
+                                         dt=global_dt)
 
 I_inputs = bm.mean(E_inputs, axis=-1, keepdims=True)
 name = 'cann-persistent.gif'
@@ -303,7 +305,7 @@ runner = bp.dyn.DSRunner(net,
                          monitors=['E2E.g', 'Ip2E.g', 'Id2E.g', 'Ip.V', 'E.V', 'E.spike', 'Ip.spike', 'Id.spike'],
                          inputs=[('E.ext_input',  Einp_scale*E_inputs, 'iter', '='),
                                  ('Id.ext_input', Iinp_scale*I_inputs, 'iter', '=')],
-                         dt=0.01)
+                         dt=global_dt)
 t = runner(dur)
 
 
@@ -345,7 +347,8 @@ bp.visualize.line_plot(runner.mon.ts, total_inp[:,neuron_index], xlim=(0, dur), 
 bp.visualize.line_plot(runner.mon.ts, Fc_inp[:,neuron_index], xlim=(0, dur), legend='Fc')  
 bp.visualize.line_plot(runner.mon.ts, Ec_inp[:,neuron_index], xlim=(0, dur), legend='Exc Rec') 
 bp.visualize.line_plot(runner.mon.ts, (Ic_inp-shunting_inp)[:,neuron_index], xlim=(0, dur), legend='Inh (ex. SI)')  
-bp.visualize.line_plot(runner.mon.ts, shunting_inp[:,neuron_index], xlim=(0, dur), legend='SI')  
+bp.visualize.line_plot(runner.mon.ts, shunting_inp[:,neuron_index], xlim=(0, dur), legend='SI')
+bp.visualize.line_plot(runner.mon.ts, -gl * runner.mon['E.V'][:,neuron_index], xlim=(0, dur), legend='Leak')
 
 fig.add_subplot(gs[2:, 0])
 bp.visualize.line_plot(runner.mon.ts, (Ic_inp-shunting_inp)[:,neuron_index], xlim=(0, dur), legend='Id+Ip')  
@@ -353,13 +356,13 @@ bp.visualize.line_plot(runner.mon.ts, r_SI[:,neuron_index], xlim=(0, dur), legen
 
 
 # ==== membrane potential and ff input ====
-# Fc_inp = Einp_scale*E_inputs
-# fig, gs = bp.visualize.get_figure(2, 1, 1.5, 7)
-# neuron_index = 500
-# fig.add_subplot(gs[:1, 0])
-# bp.visualize.line_plot(runner.mon.ts, Fc_inp[:,neuron_index], xlim=(0, dur), legend='ff inp')
-# fig.add_subplot(gs[1:2, 0])
-# bp.visualize.line_plot(runner.mon.ts, runner.mon['E.V'][:,neuron_index], xlim=(0, dur), legend='mem potential', show=True)
+Fc_inp = Einp_scale*E_inputs
+fig, gs = bp.visualize.get_figure(2, 1, 1.5, 7)
+neuron_index = 500
+fig.add_subplot(gs[:1, 0])
+bp.visualize.line_plot(runner.mon.ts, Fc_inp[:,neuron_index], xlim=(0, dur), legend='ff inp')
+fig.add_subplot(gs[1:2, 0])
+bp.visualize.line_plot(runner.mon.ts, runner.mon['E.V'][:,neuron_index], xlim=(0, dur), legend='mem potential', show=True)
 
 # neuron_index = 900
 # fig.add_subplot(gs[:1, 1])
@@ -377,11 +380,11 @@ def moving_average(a, n, axis):
 
 
 plt.figure()
-T = 100
-ma = moving_average(runner.mon['E.spike'], n=T, axis=0) # average window: 1ms
+T = 1000
+ma = moving_average(runner.mon['E.spike'], n=T, axis=0) # average window: 10ms
 bump_activity = bm.vstack([bm.sum(ma * bm.cos(net.x[None,]), axis=1),bm.sum(ma * bm.sin(net.x[None,]), axis=1)])
 readout = bm.array([[1., 0.]]) @ bump_activity
-firing_rate = ma / (T * 0.01 / 1000) 
+firing_rate = ma / (T * global_dt / 1000) 
 plt.subplot(2,1,1)
 plt.plot(readout.T / bm.max(readout))
 plt.plot(E_inputs[T-1:,500] / bm.max(E_inputs[T-1:,500]))
