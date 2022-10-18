@@ -3,7 +3,7 @@ import brainpy.math as bm
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import convolve2d
-import synapse
+# import synapse
 
 import pdb
 
@@ -48,7 +48,8 @@ class LIF(bp.dyn.NeuGroup):
         dvdt = (-self.gl*(-self.vl+V) + inputs) / self.cm
         return dvdt
 
-    def update(self, _t, _dt):
+    def update(self, dti):
+        _t, _dt = dti.t, dti.dt
         refractory = (_t - self.t_last_spike) <= self.tau_ref
         V = self.integral(self.V, _t, self.input, dt=_dt)
         V = bm.where(refractory, self.V, V)
@@ -114,7 +115,7 @@ class SCANN(bp.dyn.Network):
 net = SCANN()
 
 # # ==== Persistent Activity ==== 
-# dur = 1000
+# dur = 1500
 # n_step = int(0.5*dur / 0.01)
 # pos = bm.linspace(-bm.pi/4, 0, n_step)[:,None]
 # inputs = bm.zeros([n_step*2, size_E], dtype=bm.float32)
@@ -122,18 +123,20 @@ net = SCANN()
 
 
 # ===== Moving Bump ====
-# dur = 2000
-# n_step = int(dur / 0.01)
-# pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
-# inputs = net.get_stimulus_by_pos(pos)
+dur = 4000
+n_step = int(dur / 0.01)
+pos = bm.linspace(-bm.pi/2, 10*bm.pi/2, n_step)[:,None]
+inputs = net.get_stimulus_by_pos(pos)
 
 
 
 # ===== Persistent Activity ====
-inputs = net.get_stimulus_by_pos(0.)
-inputs, dur = bp.inputs.section_input(values=[inputs, 0.],
-                                         durations=[500., 1000.],
-                                         return_length=True)
+# inputs = net.get_stimulus_by_pos(0.)
+# inputs, dur = bp.inputs.section_input(values=[inputs, 0.],
+#                                          durations=[500., 1000.],
+#                                          return_length=True)
+
+
 
 runner = bp.dyn.DSRunner(net,
                          jit=True,
@@ -151,22 +154,22 @@ i2i_inp = runner.mon['I2I.g'] * (vi - runner.mon['I.V'])
 
 
 # # visualization
-# fig, gs = bp.visualize.get_figure(5, 1, 1.5, 10)
+fig, gs = bp.visualize.get_figure(3, 1, 1.5, 10)
 
-# fig.add_subplot(gs[:3, 0])
-# bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, dur), ylim=[0,size_E])
-
+fig.add_subplot(gs[:3, 0])
+bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, dur), ylim=[0,size_E], markersize=1.)
+plt.show()
 # fig.add_subplot(gs[3:, 0])
 # bp.visualize.raster_plot(runner.mon.ts, runner.mon['I.spike'], xlim=(0, dur), ylim=[0,size_I], show=True)  
 
 # Time window: 100ms with dt=0.01 ms
-firing_rate = convolve2d(runner.mon['E.spike'].astype(np.float32), np.ones([10000,1],dtype=np.float32), mode='same') / (10000*0.01/1000)
-
-bp.visualize.animate_1D(
-  dynamical_vars=[{'ys': 0.005*firing_rate, 'xs': net.x, 'legend': 'spike'},
-                  {'ys': inputs, 'xs': net.x, 'legend': 'Iext'}],
-  frame_step=1000,
-  frame_delay=50,
-  show=True,
-  save_path='cann-decoding.gif'
-)  
+# firing_rate = convolve2d(runner.mon['E.spike'].astype(np.float32), np.ones([10000,1],dtype=np.float32), mode='same') / (10000*0.01/1000)
+#
+# bp.visualize.animate_1D(
+#   dynamical_vars=[{'ys': 0.005*firing_rate, 'xs': net.x, 'legend': 'spike'},
+#                   {'ys': inputs, 'xs': net.x, 'legend': 'Iext'}],
+#   frame_step=1000,
+#   frame_delay=50,
+#   show=True,
+#   save_path='cann-decoding.gif'
+# )

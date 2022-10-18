@@ -2,10 +2,9 @@ import brainpy as bp
 import brainpy.math as bm
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import convolve2d
-from UnitExpCUBA import UnitExpCUBA
 
-from brainpy.dyn import TwoEndConn, DynamicalSystem
+from UnitExpCUBA import UnitExpCUBA
+from brainpy.dyn import TwoEndConn
 
 
 import pdb
@@ -15,17 +14,17 @@ global_dt = 0.01
 bp.math.set_platform('cpu')
 
 size_E, size_I, size_ff = 750, 250, 1000
-vth = 10
+vth = 1
 vreset = 0
-tau_scale = 1.5 # 1
-tau_Es = 1.5 *tau_scale
-tau_Is = 0.3 *tau_scale
-tau_E = 0.6 *tau_scale
-tau_I = 0.3 *tau_scale
+tau_scale = 1 # 1
+tau_Es = 15 *tau_scale
+tau_Is = 5 *tau_scale
+tau_E = 2 *tau_scale
+tau_I = 1 *tau_scale
 
-scale = 0.1
+scale = 0.01
 gEE = 0.065 * 3 * 8 * scale # *7
-gEI = 0.0175 * 7.5 * 6 * scale #*6
+gEI = 0.0175 * 7.5 * 6 * scale # *6
 gIE = -0.1603 * 2.5 * 4 * scale
 gII = -0.0082 * 7.5 * 30 * scale
 gl = 0.000268 * 1 * bm.sqrt(size_E+size_I)
@@ -34,7 +33,7 @@ shunting_k = 0.1
 f_E = 1.1 * 0.5
 f_I = 1.0 * 0.5
 input_amp = 0.5
-bg_str = 0.025
+bg_str = 0.1
 
 
 class Shunting(TwoEndConn):
@@ -48,7 +47,8 @@ class Shunting(TwoEndConn):
         assert self.E2Esyn.post == self.I2Esyn.post
         self.post = self.E2Esyn.post
 
-    def update(self, t, dt):
+    def update(self, dti):
+        t, dt = dti.t, dti.dt
         E_inp = self.E2Esyn.output_value + self.EGroup.ext_input
         I_inp = self.I2Esyn.output_value
         self.post.input += self.k * E_inp * I_inp
@@ -61,7 +61,7 @@ class LIF(bp.dyn.NeuGroup):
         # parameters
         self.size = size
         self.tau = tau
-        self.vth = vth + (bm.random.rand(self.size) - 0.5) * 0
+        self.vth = vth
         self.gl = gl
         self.vreset = vreset
         self.tau_ref = tau_ref
@@ -82,7 +82,8 @@ class LIF(bp.dyn.NeuGroup):
         dvdt = (-self.gl*V + inputs + ext_input) / self.tau
         return dvdt
 
-    def update(self, _t, _dt):
+    def update(self, dti):
+        _t, _dt = dti.t, dti.dt
         refractory = (_t - self.t_last_spike) <= self.tau_ref
         V = self.integral(self.V, _t, self.input, self.ext_input, dt=_dt)
         V = bm.where(refractory, self.V, V)
@@ -97,7 +98,7 @@ class LIF(bp.dyn.NeuGroup):
 class SCANN(bp.dyn.Network):
     def __init__(self):
         self.a = bm.sqrt(2*bm.pi) * (bm.pi/6)
-        self.J = 4.
+        self.J = 1.
         self.A = input_amp
         self.x = bm.linspace(-bm.pi, bm.pi, size_E)
 
@@ -129,7 +130,12 @@ class SCANN(bp.dyn.Network):
         x_right = bm.repeat(x.reshape((1,-1)), len(x), axis=0)
         d = self.dist(x_left-x_right)
         w_ee_ = self.J * bm.exp(-bm.pi * bm.square(d / self.a))
-        w_ee = w_ee_ / bm.sum(w_ee_, axis=-1, keepdims=True)
+
+
+        # w_ee = w_ee_ / bm.sum(w_ee_, axis=-1, keepdims=True)
+        w_ee = w_ee_
+
+
         const_conn = lambda w, p: (w > 1-p) / np.maximum(np.sum(w > 1-p, axis=-1, keepdims=True), 1)
         w_ei = const_conn(np.random.rand(size_E, size_I), 1.0)
         w_ii = const_conn(np.random.rand(size_I, size_I), 1.0)
@@ -150,14 +156,6 @@ net = SCANN()
 
 Einp_scale = size_ff * f_E / bm.sqrt(size_ff)
 Iinp_scale = size_ff * f_I / bm.sqrt(size_ff)
-
-# ===== Moving Bump ====
-# dur = 1000
-# n_step = int(dur / global_dt)
-# pos = bm.linspace(-2*bm.pi/3, 50*bm.pi/3, n_step)[:,None]
-# E_inputs = net.get_stimulus_by_pos(pos)
-# name = 'cann-moving.gif'
-
 
 # ===== Persistent Activity ====
 bump_inp = net.get_stimulus_by_pos(0.)
@@ -185,13 +183,13 @@ t = runner(dur)
 
 
 # ==== raster plot =====
-fig, gs = bp.visualize.get_figure(4, 1, 1.5, 10)
+fig, gs = bp.visualize.get_figure(2, 1, 1.5, 10)
 
-fig.add_subplot(gs[:2, 0])
+fig.add_subplot(gs[:1, 0])
 bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, dur), ylim=[0,size_E])
 plt.plot([20, 70], [375, 375], label='input peak', color='red')
 
-fig.add_subplot(gs[2:, 0])
+fig.add_subplot(gs[1:, 0])
 bp.visualize.raster_plot(runner.mon.ts, runner.mon['I.spike'], xlim=(0, dur), ylim=[0,size_I], show=True) 
 
 
@@ -272,10 +270,10 @@ bp.visualize.raster_plot(runner.mon.ts, runner.mon['I.spike'], xlim=(0, dur), yl
 
 
 # ====== Membrane potential distribution ======
-plt.hist(bm.reshape(runner.mon['E.V'][1500:2000,], [-1]), bins=100, density=True, range=[-3, vth])
-plt.show()
-plt.hist(bm.reshape(runner.mon['E.V'][2500:3000,], [-1]), bins=100, density=True, range=[-3, vth])
-plt.show()
+# plt.hist(bm.reshape(runner.mon['E.V'][1500:2000,], [-1]), bins=100, density=True, range=[-3, vth])
+# plt.show()
+# plt.hist(bm.reshape(runner.mon['E.V'][2500:3000,], [-1]), bins=100, density=True, range=[-3, vth])
+# plt.show()
 
 
 

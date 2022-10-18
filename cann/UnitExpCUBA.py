@@ -1,6 +1,6 @@
 from brainpy.dyn import NeuGroup, TwoEndConn, DynamicalSystem
 from brainpy.connect import TwoEndConnector, All2All, One2One
-from brainpy.types import Tensor
+from brainpy.types import Array
 from brainpy.initialize import Initializer, init_param
 from typing import Union, Dict, Callable
 from brainpy.integrators import odeint, JointEq
@@ -14,11 +14,11 @@ class UnitExpCUBA(TwoEndConn):
             self,
             pre: NeuGroup,
             post: NeuGroup,
-            conn: Union[TwoEndConnector, Tensor, Dict[str, Tensor]],
+            conn: Union[TwoEndConnector, Array, Dict[str, Array]],
             conn_type: str = 'sparse',
-            g_max: Union[float, Tensor, Initializer, Callable] = 1.,
-            delay_step: Union[int, Tensor, Initializer, Callable] = None,
-            tau: Union[float, Tensor] = 8.0,
+            g_max: Union[float, Array, Initializer, Callable] = 1.,
+            delay_step: Union[int, Array, Initializer, Callable] = None,
+            tau: Union[float, Array] = 8.0,
             name: str = None,
             method: str = 'exp_auto',
     ):
@@ -29,7 +29,7 @@ class UnitExpCUBA(TwoEndConn):
         # parameters
         self.tau = tau
         if bm.size(self.tau) != 1:
-            raise ValueError(f'"tau" must be a scalar or a tensor with size of 1. '
+            raise ValueError(f'"tau" must be a scalar or a Array with size of 1. '
                                              f'But we got {self.tau}')
 
         # connections and weights
@@ -75,7 +75,8 @@ class UnitExpCUBA(TwoEndConn):
         if self.delay_step is not None:
             self.reset_delay(f"{self.pre.name}.spike", self.pre.spike)
 
-    def update(self, t, dt):
+    def update(self, tdi):
+        t, dt = tdi.t, tdi.dt
         # delays
         if self.delay_step is None:
             pre_spike = self.pre.spike

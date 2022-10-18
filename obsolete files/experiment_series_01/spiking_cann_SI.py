@@ -2,6 +2,7 @@ import brainpy as bp
 import brainpy.math as bm
 import matplotlib.pyplot as plt
 import numpy as np
+from ExpCUBA import ExpCUBA
 from scipy.signal import convolve2d
 
 from brainpy.dyn import TwoEndConn, DynamicalSystem
@@ -34,7 +35,8 @@ class Shunting(TwoEndConn):
         assert self.E2Esyn.post == self.I2Esyn.post
         self.post = self.E2Esyn.post
 
-    def update(self, t, dt):
+    def update(self, dti):
+        t, dt = dti.t, dti.dt
         E_inp = self.E2Esyn.output_value
         I_inp = self.I2Esyn.output_value
         self.post.input += self.k * E_inp * I_inp
@@ -68,7 +70,8 @@ class LIF(bp.dyn.NeuGroup):
         dvdt = (-self.gl*(-self.vl+V) + inputs) / self.cm
         return dvdt
 
-    def update(self, _t, _dt):
+    def update(self, dti):
+        _t, _dt = dti.t, dti.dt
         refractory = (_t - self.t_last_spike) <= self.tau_ref
         V = self.integral(self.V, _t, self.input, dt=_dt)
         V = bm.where(refractory, self.V, V)
@@ -136,20 +139,20 @@ net = SCANN()
 
 
 # ===== Moving Bump ====
-# dur = 2000
-# n_step = int(dur / 0.01)
-# pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
-# inputs = net.get_stimulus_by_pos(pos)
-# name = 'cann-moving.gif'
+dur = 2000
+n_step = int(dur / 0.01)
+pos = bm.linspace(-bm.pi/2, bm.pi/2, n_step)[:,None]
+inputs = net.get_stimulus_by_pos(pos)
+name = 'cann-moving.gif'
 
 
 # ===== Persistent Activity ====
-inputs = net.get_stimulus_by_pos(0.)
-inputs, dur = bp.inputs.section_input(values=[0, inputs, 0.],
-                                         durations=[500, 1000., 500.],
-                                         return_length=True,
-                                         dt=0.01)
-name = 'cann-persistent.gif'
+# inputs = net.get_stimulus_by_pos(0.)
+# inputs, dur = bp.inputs.section_input(values=[0, inputs, 0.],
+#                                          durations=[500, 1000., 500.],
+#                                          return_length=True,
+#                                          dt=0.01)
+# name = 'cann-persistent.gif'
 
 
 
