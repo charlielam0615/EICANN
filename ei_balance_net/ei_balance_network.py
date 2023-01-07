@@ -28,7 +28,7 @@ class LIF(bp.dyn.NeuGroup):
         self.integral = bp.odeint(f=self.derivative, method='euler')
 
     def derivative(self, V, t, inputs, ext_input):
-        dvdt = (-self.gl*V + inputs + ext_input) / self.tau
+        dvdt = (self.gl*V + inputs + ext_input) / self.tau
         return dvdt
 
     def update(self, tdi):

@@ -1,16 +1,14 @@
 import brainpy as bp
 import brainpy.math as bm
 import matplotlib.pyplot as plt
-import numpy as np
 from UnitExpCUBA import UnitExpCUBA
 from brainpy.dyn import TwoEndConn
 
 
 class Shunting(TwoEndConn):
-    def __init__(self, E2Esyn_s, E2Esyn_f, I2Esyn_s, k, EGroup):
+    def __init__(self, E2Esyn_s, I2Esyn_s, k, EGroup):
         super().__init__(pre=E2Esyn_s.pre, post=I2Esyn_s.post, conn=None)
         self.E2Esyn_s = E2Esyn_s
-        self.E2Esyn_f = E2Esyn_f
         self.I2Esyn_s = I2Esyn_s
         self.EGroup = EGroup
         self.k = k
@@ -18,7 +16,7 @@ class Shunting(TwoEndConn):
 
     def update(self, tdi):
         t, dt = tdi.t, tdi.dt
-        E_inp = self.E2Esyn_s.output_value + self.E2Esyn_f.output_value + self.EGroup.ext_input
+        E_inp = self.E2Esyn_s.output_value + self.EGroup.ext_input
         I_inp = self.I2Esyn_s.output_value
         self.post.input += self.k * E_inp * I_inp
 
@@ -47,8 +45,7 @@ class LIF(bp.dyn.NeuGroup):
         self.integral = bp.odeint(f=self.derivative, method='euler')
 
     def derivative(self, V, t, inputs, ext_input):
-        I = self.gl*V + inputs + ext_input
-        dvdt = I / self.tau
+        dvdt = (self.gl*V + inputs + ext_input) / self.tau
         return dvdt
 
     def update(self, tdi):
@@ -68,53 +65,39 @@ class LIF(bp.dyn.NeuGroup):
         self.input[:] = 0.
 
 
-class EICANN(bp.dyn.Network):
-    def __init__(self, size_E, size_Ip, size_Id, tau_E, tau_I, tau_Es, tau_Is, tau_Ef, tau_If,
-                 V_reset, V_threshold, prob, JEE, JEI, JII, JIE, gl, gEE, gEIp, gIpIp, gIpE, shunting_k):
-        self.conn_a = 2 * (bm.pi/6)**2
-        self.stim_a = 2 * (bm.pi/6)**2
-        self.size_E, self.size_Ip, self.size_Id = size_E, size_Ip, size_Id
+class CANN(bp.dyn.Network):
+    def __init__(self, size_E, size_Ip, tau_E, tau_I, tau_Es, tau_Is, V_reset, V_threshold, prob,
+                 gl, gEE, gEIp, gIpIp, gIpE, shunting_k):
+        self.conn_a = bm.sqrt(2 * bm.pi) * (bm.pi/6)
+        self.stim_a = bm.sqrt(2 * bm.pi) * (bm.pi/6)
+        self.size_E, self.size_Ip = size_E, size_Ip
         self.shunting_k = shunting_k
         self.J = 1.
         self.A = 1.
 
+        w = lambda size_pre, size_post, p: self.make_gauss_conn(size_pre, size_post, p)
+
         # neurons
-        self.E = LIF(size=size_E, gl=gl, tau=tau_E, vth=V_threshold, vreset=V_reset, tau_ref=0)
-        self.Ip = LIF(size=size_Ip, gl=gl, tau=tau_I, vth=V_threshold, vreset=V_reset, tau_ref=0)
-        self.Id = LIF(size=size_Id, gl=gl, tau=tau_I, vth=V_threshold, vreset=V_reset, tau_ref=0)
+        self.E = LIF(size_E, tau=tau_E, gl=gl, vth=V_threshold, vreset=V_reset, tau_ref=0)
+        self.Ip = LIF(size_Ip, tau=tau_I, gl=gl, vth=V_threshold, vreset=V_reset, tau_ref=0)
+        E, Ip = self.E, self.Ip
 
-        w = lambda size_pre, size_post, prob: self.make_gauss_conn(size_pre, size_post, prob)
-        r = lambda size_pre, size_post, prob: self.make_rand_conn(size_pre, size_post, prob)
+        # CANN synapse
+        r = lambda size_pre, size_post, p: self.make_rand_conn(size_pre, size_post, p)
+        E2E_sw, E2I_sw, I2I_sw, I2E_sw = gEE*w(size_E, size_E, 1.0), gEIp*r(size_E, size_Ip, prob), \
+                                         gIpIp*r(size_Ip, size_Ip, prob), gIpE*r(size_Ip, size_E, prob)
 
-        E2E_fw, E2I_fw, I2I_fw, I2E_fw = JEE * r(size_E, size_E, prob), JEI * r(size_E, size_Id, prob), \
-                                         JII * r(size_Id, size_Id, prob), JIE * r(size_Id, size_E, prob)
-
-        # ======== EI balance =====
-        self.E2E_f = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.connect.All2All(), tau=tau_Ef, g_max=E2E_fw)
-        self.E2I_f = UnitExpCUBA(pre=self.E, post=self.Id, conn=bp.connect.All2All(), tau=tau_Ef, g_max=E2I_fw)
-        self.I2I_f = UnitExpCUBA(pre=self.Id, post=self.Id, conn=bp.connect.All2All(), tau=tau_If, g_max=I2I_fw)
-        self.I2E_f = UnitExpCUBA(pre=self.Id, post=self.E, conn=bp.connect.All2All(), tau=tau_If, g_max=I2E_fw)
-
-        # ======= CANN =====
-        E2E_sw, E2I_sw, I2I_sw, I2E_sw = gEE * w(size_E, size_E, 1.0), gEIp * r(size_E, size_Ip, prob), \
-                                         gIpIp * r(size_Ip, size_Ip, prob), gIpE * r(size_Ip, size_E, prob)
-
-        self.E2E_s = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.connect.All2All(), tau=tau_Es, g_max=E2E_sw)
-        self.E2I_s = UnitExpCUBA(pre=self.E, post=self.Ip, conn=bp.connect.All2All(), tau=tau_Es, g_max=E2I_sw)
-        self.I2I_s = UnitExpCUBA(pre=self.Ip, post=self.Ip, conn=bp.connect.All2All(), tau=tau_Is, g_max=I2I_sw)
-        self.I2E_s = UnitExpCUBA(pre=self.Ip, post=self.E, conn=bp.connect.All2All(), tau=tau_Is, g_max=I2E_sw)
-        self.ESI = Shunting(E2Esyn_s=self.E2E_s, E2Esyn_f=self.E2E_f, I2Esyn_s=self.I2E_s, k=shunting_k, EGroup=self.E)
-
-        super(EICANN, self).__init__()
+        self.E2E_s = UnitExpCUBA(pre=E, post=E, conn=bp.connect.All2All(), tau=tau_Es, g_max=E2E_sw)
+        self.E2I_s = UnitExpCUBA(pre=E, post=Ip, conn=bp.conn.FixedProb(prob), tau=tau_Es, g_max=gEIp)
+        self.I2I_s = UnitExpCUBA(pre=Ip, post=Ip, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIpIp)
+        self.I2E_s = UnitExpCUBA(pre=Ip, post=E, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIpE)
+        self.ESI = Shunting(E2Esyn_s=self.E2E_s, I2Esyn_s=self.I2E_s, k=shunting_k, EGroup=self.E)
 
         print('[Weights]')
-        print("------------- EI Balanced ---------------")
-        print("|  E2E   |  E2I    |  I2I     |  I2E    | ")
-        print(f"|{E2E_fw.max():.5f} | {E2I_fw.max():.5f} | {I2I_fw.min():.5f} | {I2E_fw.min():.5f}|")
         print("---------------- CANN -------------------")
         print("|  E2E   |  E2I    |  I2I     |  I2E    | ")
         print(f"|{E2E_sw.max():.5f} | {E2I_sw.max():.5f} | {I2I_sw.min():.5f}  | {I2E_sw.min():.5f}|")
-        super(EICANN, self).__init__()
+        super(CANN, self).__init__()
 
     def dist(self, d):
         d = bm.remainder(d, 2 * bm.pi)
@@ -128,7 +111,7 @@ class EICANN(bp.dyn.Network):
         w_ = self.J * bm.exp(-bm.pi * bm.square(d / self.conn_a))
         # w = w_ / bm.sum(w_, axis=-1, keepdims=True)
         w = w_
-        prob_mask = (bm.random.rand(size_pre, size_post) < prob).astype(bm.float32)
+        prob_mask = (bm.random.rand(size_pre, size_post)<prob).astype(bm.float32)
         w = w * prob_mask
         return w
 
@@ -140,6 +123,12 @@ class EICANN(bp.dyn.Network):
     def get_stimulus_by_pos(self, pos, size_n):
         x = bm.linspace(-bm.pi, bm.pi, size_n)
         if bm.ndim(pos) == 2:
-            x = x[None,]
-        I = self.A * bm.exp(-bm.pi * bm.square(self.dist(x - pos) / (2 * self.a)))
+            x = x[None, ]
+        I = self.A * bm.exp(-bm.pi * bm.square(self.dist(x - pos) / self.stim_a))
         return I
+
+
+def moving_average(a, n, axis):
+    ret = bm.cumsum(a, axis=axis, dtype=bm.float32)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n

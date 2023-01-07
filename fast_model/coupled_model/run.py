@@ -24,22 +24,22 @@ gl = -0.15
 
 # ===== CANN Parameters =====
 cann_scale = 1.0
-tau_Es = 15 * tau_scale
+tau_Es = 0.5 * tau_scale
 tau_Is = 0.6 * tau_scale
-gEE = 114. * cann_scale / (size_E*1.0)
-gEIp = 16. * cann_scale / (size_E*prob)
-gIpE = -11. * cann_scale / (size_Ip*prob)
-gIpIp = -4. * cann_scale / (size_Ip*prob)
-shunting_k = 1.0
+gEE = 113.85 * cann_scale / (size_E*1.0)
+gEIp = 15.8 * cann_scale / (size_E*prob)
+gIpE = -10.7 * cann_scale / (size_Ip*prob)
+gIpIp = -3.95 * cann_scale / (size_Ip*prob)
+shunting_k = 2.0
 
 # ===== EI Balance Parameters ====
 tau_Ef = 0.5 * tau_scale
 tau_If = 0.6 * tau_scale
-ei_scale = 1.0
-jie = -4.8 * ei_scale
-jii = -3.8 * ei_scale
-jee = 2.5 * ei_scale
-jei = 5.0 * ei_scale
+ei_scale = 1.0 * 0.6
+jie = -8. * ei_scale
+jii = -6.4 * ei_scale
+jee = 4.12 * ei_scale
+jei = 8.3 * ei_scale
 JIE = jie / bm.sqrt(size_Id*prob)
 JII = jii / bm.sqrt(size_Id*prob)
 JEE = jee / bm.sqrt(size_E*prob)
@@ -49,8 +49,6 @@ JEI = jei / bm.sqrt(size_E*prob)
 f_E = 0.1
 f_I = 0.
 mu = 1.0
-
-criterion = V_threshold * JEE * prob - size_Id * JII * prob * JEE * prob + size_Id * JIE * prob * JEI * prob
 
 
 def run(exp_id):
@@ -85,7 +83,7 @@ def run(exp_id):
                              dt=global_dt)
     runner(duration)
     vis_func(runner, net, E_inp)
-    plt.show()
+    # plt.show()
     return
 
 
@@ -100,8 +98,5 @@ if __name__ == "__main__":
     # 'compare_speed_input': population readout
     # 'compare_current_input': plot current for convergence rate analysis
     # 'compare_noise_sensitivity_input': compare bump sensitivity to noise
-    # 'sudden_change_stimulus_converge': analyze converging speed
-    # 'smooth_moving_stimulus_lag': compute the lag between stimulus and response
-    plt.style.use('ggplot')
-    print("criterion:", criterion)
-    run('persistent_input')
+
+    run('compare_noise_sensitivity_input')

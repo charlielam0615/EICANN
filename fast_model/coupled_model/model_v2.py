@@ -71,8 +71,8 @@ class LIF(bp.dyn.NeuGroup):
 class EICANN(bp.dyn.Network):
     def __init__(self, size_E, size_Ip, size_Id, tau_E, tau_I, tau_Es, tau_Is, tau_Ef, tau_If,
                  V_reset, V_threshold, prob, JEE, JEI, JII, JIE, gl, gEE, gEIp, gIpIp, gIpE, shunting_k):
-        self.conn_a = 2 * (bm.pi/6)**2
-        self.stim_a = 2 * (bm.pi/6)**2
+        self.conn_a = bm.sqrt(2 * bm.pi) * (bm.pi/6)
+        self.stim_a = bm.sqrt(2 * bm.pi) * (bm.pi/6)
         self.size_E, self.size_Ip, self.size_Id = size_E, size_Ip, size_Id
         self.shunting_k = shunting_k
         self.J = 1.
@@ -90,19 +90,19 @@ class EICANN(bp.dyn.Network):
                                          JII * r(size_Id, size_Id, prob), JIE * r(size_Id, size_E, prob)
 
         # ======== EI balance =====
-        self.E2E_f = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.connect.All2All(), tau=tau_Ef, g_max=E2E_fw)
-        self.E2I_f = UnitExpCUBA(pre=self.E, post=self.Id, conn=bp.connect.All2All(), tau=tau_Ef, g_max=E2I_fw)
-        self.I2I_f = UnitExpCUBA(pre=self.Id, post=self.Id, conn=bp.connect.All2All(), tau=tau_If, g_max=I2I_fw)
-        self.I2E_f = UnitExpCUBA(pre=self.Id, post=self.E, conn=bp.connect.All2All(), tau=tau_If, g_max=I2E_fw)
+        self.E2E_f = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.conn.FixedProb(prob), tau=tau_Ef, g_max=JEE)
+        self.E2I_f = UnitExpCUBA(pre=self.E, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_Ef, g_max=JEI)
+        self.I2I_f = UnitExpCUBA(pre=self.Id, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_If, g_max=JII)
+        self.I2E_f = UnitExpCUBA(pre=self.Id, post=self.E, conn=bp.conn.FixedProb(prob), tau=tau_If, g_max=JIE)
 
         # ======= CANN =====
         E2E_sw, E2I_sw, I2I_sw, I2E_sw = gEE * w(size_E, size_E, 1.0), gEIp * r(size_E, size_Ip, prob), \
                                          gIpIp * r(size_Ip, size_Ip, prob), gIpE * r(size_Ip, size_E, prob)
 
         self.E2E_s = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.connect.All2All(), tau=tau_Es, g_max=E2E_sw)
-        self.E2I_s = UnitExpCUBA(pre=self.E, post=self.Ip, conn=bp.connect.All2All(), tau=tau_Es, g_max=E2I_sw)
-        self.I2I_s = UnitExpCUBA(pre=self.Ip, post=self.Ip, conn=bp.connect.All2All(), tau=tau_Is, g_max=I2I_sw)
-        self.I2E_s = UnitExpCUBA(pre=self.Ip, post=self.E, conn=bp.connect.All2All(), tau=tau_Is, g_max=I2E_sw)
+        self.E2I_s = UnitExpCUBA(pre=self.E, post=self.Ip, conn=bp.conn.FixedProb(prob), tau=tau_Es, g_max=gEIp)
+        self.I2I_s = UnitExpCUBA(pre=self.Ip, post=self.Ip, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIpIp)
+        self.I2E_s = UnitExpCUBA(pre=self.Ip, post=self.E, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIpE)
         self.ESI = Shunting(E2Esyn_s=self.E2E_s, E2Esyn_f=self.E2E_f, I2Esyn_s=self.I2E_s, k=shunting_k, EGroup=self.E)
 
         super(EICANN, self).__init__()

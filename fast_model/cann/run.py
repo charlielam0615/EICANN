@@ -23,13 +23,13 @@ gl = -0.15
 
 # ===== CANN Parameters =====
 cann_scale = 1.0
-tau_Es = 15 * tau_scale
+tau_Es = 0.5 * tau_scale
 tau_Is = 0.6 * tau_scale
-gEE = 114. * cann_scale / (size_E*1.0)
-gEIp = 16. * cann_scale / (size_E*prob)
-gIpE = -11. * cann_scale / (size_Ip*prob)
-gIpIp = -4. * cann_scale / (size_Ip*prob)
-shunting_k = 1.0
+gEE = 4.8 * cann_scale / bm.sqrt(num)
+gEIp = 2.675 * cann_scale / bm.sqrt(num)
+gIpE = -5.41 * cann_scale / bm.sqrt(num)
+gIpIp = -2. * cann_scale / bm.sqrt(num)
+shunting_k = 2.0
 
 f_E = 0.1
 f_I = 0.
@@ -77,8 +77,5 @@ if __name__ == "__main__":
     # 'compare_speed_input': population readout for convergence rate analysis
     # 'compare_current_input': plot current for convergence rate analysis
     # 'compare_noise_sensitivity_input': compare bump sensitivity to noise
-    # 'sudden_change_stimulus_converge': analyze converging speed
-    # 'smooth_moving_stimulus_lag': compute the lag between stimulus and response
 
-    plt.style.use('ggplot')
-    run('persistent_input')
+    run('compare_noise_sensitivity_input')

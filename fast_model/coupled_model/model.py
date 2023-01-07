@@ -71,8 +71,8 @@ class LIF(bp.dyn.NeuGroup):
 class EICANN(bp.dyn.Network):
     def __init__(self, size_E, size_Ip, size_Id, tau_E, tau_I, tau_Es, tau_Is, tau_Ef, tau_If,
                  V_reset, V_threshold, prob, JEE, JEI, JII, JIE, gl, gEE, gEIp, gIpIp, gIpE, shunting_k):
-        self.conn_a = 2 * (bm.pi/6)**2
-        self.stim_a = 2 * (bm.pi/6)**2
+        self.conn_a = bm.sqrt(2 * bm.pi) * (bm.pi/6)
+        self.stim_a = bm.sqrt(2 * bm.pi) * (bm.pi/6)
         self.size_E, self.size_Ip, self.size_Id = size_E, size_Ip, size_Id
         self.shunting_k = shunting_k
         self.J = 1.

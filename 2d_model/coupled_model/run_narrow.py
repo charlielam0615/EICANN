@@ -1,7 +1,8 @@
 import brainpy as bp
 import brainpy.math as bm
+import numpy as np
 import matplotlib.pyplot as plt
-from model_v2 import EICANN
+from model import EICANN
 from input_protocol import input_setup
 from visualize_protocol import vis_setup
 
@@ -10,10 +11,19 @@ bp.math.set_platform('cpu')
 global_dt = 0.01
 
 # ==== Neuron parameters =====
-n_scale = 1
-size_E, size_Ip, size_Id, size_ff = int(750*n_scale), int(250*n_scale), int(250*n_scale), int(1000*n_scale)
-num = size_E + size_Ip
-num_ff = num
+n_scale = 2
+qI = 0.25
+qE = 0.75
+w, h = 35*n_scale, 35*n_scale
+a = bm.pi/12
+
+E_w, E_h = int(w*np.sqrt(qE)), int(h*np.sqrt(qE))
+num_E, size_E = E_w*E_h, (E_h, E_w)
+Ip_w, Ip_h = int(w*np.sqrt(qI)), int(h*np.sqrt(qI))
+num_Ip, size_Ip = Ip_w*Ip_h, (Ip_h, Ip_w)
+Id_w, Id_h = int(w*np.sqrt(qI)), int(h*np.sqrt(qI))
+num_Id, size_Id = Id_w*Id_h, (Id_h, Id_w)
+num_ff = num = num_E + num_Ip
 prob = 0.25
 tau_scale = 10
 tau_E = 2 * tau_scale
@@ -23,34 +33,32 @@ V_threshold = 1.
 gl = -0.15
 
 # ===== CANN Parameters =====
-cann_scale = 1.0
+cann_scale = 1.0 * 2.5 #/ (bm.sqrt(bm.pi/2)*a)
 tau_Es = 15 * tau_scale
-tau_Is = 0.6 * tau_scale
-gEE = 114. * cann_scale / (size_E*1.0)
-gEIp = 16. * cann_scale / (size_E*prob)
-gIpE = -11. * cann_scale / (size_Ip*prob)
-gIpIp = -4. * cann_scale / (size_Ip*prob)
-shunting_k = 1.0
+tau_Is = 5 * tau_scale
+gEE = 113.85 * cann_scale / (num_E*1.0) * 3.8
+gEIp = 15.8 * cann_scale / (num_E*prob)
+gIpE = -10.7 * cann_scale / (num_Ip*prob)
+gIpIp = -3.95 * cann_scale / (num_Ip*prob)
+shunting_k = 4.0  # 4.0
 
 # ===== EI Balance Parameters ====
 tau_Ef = 0.5 * tau_scale
 tau_If = 0.6 * tau_scale
-ei_scale = 1.0
-jie = -4.8 * ei_scale
-jii = -3.8 * ei_scale
-jee = 2.5 * ei_scale
-jei = 5.0 * ei_scale
-JIE = jie / bm.sqrt(size_Id*prob)
-JII = jii / bm.sqrt(size_Id*prob)
-JEE = jee / bm.sqrt(size_E*prob)
-JEI = jei / bm.sqrt(size_E*prob)
+ei_scale = 1.0 * 1.2 #/ (bm.sqrt(bm.pi/2)*a)
+jie = -8. * ei_scale
+jii = -6.4 * ei_scale
+jee = 4.12 * ei_scale
+jei = 8.3 * ei_scale
+JIE = jie / bm.sqrt(num_Id*prob)
+JII = jii / bm.sqrt(num_Id*prob)
+JEE = jee / bm.sqrt(num_E*prob)
+JEI = jei / bm.sqrt(num_E*prob)
 
 # ======= Input Parameters ======
-f_E = 0.1
-f_I = 0.
+f_E = 0.1 * 10  #/ (bm.sqrt(bm.pi/2)*a)
+f_I = 0.015 * 10 * 0
 mu = 1.0
-
-criterion = V_threshold * JEE * prob - size_Id * JII * prob * JEE * prob + size_Id * JIE * prob * JEI * prob
 
 
 def run(exp_id):
@@ -60,7 +68,7 @@ def run(exp_id):
                  tau_Ef=tau_Ef, tau_If=tau_If,
                  V_reset=V_reset, V_threshold=V_threshold, prob=prob,
                  JEE=JEE, JEI=JEI, JII=JII, JIE=JIE,
-                 gl=gl, gEE=gEE, gEIp=gEIp, gIpIp=gIpIp, gIpE=gIpE, shunting_k=shunting_k)
+                 gl=gl, gEE=gEE, gEIp=gEIp, gIpIp=gIpIp, gIpE=gIpE, shunting_k=shunting_k, a=a)
 
     # fetch protocols
     input_specs = input_setup[exp_id]
@@ -75,9 +83,12 @@ def run(exp_id):
 
     runner = bp.dyn.DSRunner(net,
                              jit=True,
-                             monitors=['Id.V', 'Ip.V', 'E.V', 'E.spike', 'Ip.spike', 'Id.spike',
+                             monitors=[
+                                       'Id.V', 'Ip.V', 'E.V',
+                                       'E.spike', 'Ip.spike', 'Id.spike',
                                        'E2E_s.g', 'E2E_f.g', 'E2I_s.g', 'E2I_f.g',
                                        'I2I_s.g', 'I2I_f.g', 'I2E_s.g', 'I2E_f.g',
+                                       'ESI.output_value',
                                        ],
                              inputs=[('E.ext_input', E_inp, 'iter', '='),
                                      ('Id.ext_input', I_inp, 'iter', '='),
@@ -91,17 +102,10 @@ def run(exp_id):
 
 if __name__ == "__main__":
     # Available protocols are:
-    # 'background_input': background input only for checking spontaneous activity
     # 'persistent_input': persistent input for bump holding task
-    # 'check_balance_input: check balance condition in Ip
-    # 'noisy_input': persistent input for bump holding task
-    # 'global_inhibition': input with two bumps for global inhibition test
+    # 'persistent_spiking_input': persistent input in spikes for bump holding task
     # 'tracking_input': tracks a moving input
-    # 'compare_speed_input': population readout
-    # 'compare_current_input': plot current for convergence rate analysis
-    # 'compare_noise_sensitivity_input': compare bump sensitivity to noise
-    # 'sudden_change_stimulus_converge': analyze converging speed
-    # 'smooth_moving_stimulus_lag': compute the lag between stimulus and response
+    # 'tracking_spiking_input': tracks a moving spiking input
+    # 'spiking_camera_input': use spiking camera data as input
     plt.style.use('ggplot')
-    print("criterion:", criterion)
-    run('persistent_input')
+    run('persistent_spiking_input')

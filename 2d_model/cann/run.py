@@ -1,7 +1,9 @@
 import brainpy as bp
 import brainpy.math as bm
 import matplotlib.pyplot as plt
-from cann import CANN
+import numpy as np
+
+from fft_cann_2d import CANN2D
 from input_protocol import input_setup
 from visualize_protocol import vis_setup
 
@@ -9,10 +11,15 @@ bp.math.set_platform('cpu')
 global_dt = 0.01
 
 # ==== Neuron parameters =====
-n_scale = 1
-size_E, size_Ip, size_ff = 750*n_scale, 250*n_scale, 1000*n_scale
-num = size_E + size_Ip
-num_ff = num
+n_scale = 3
+qI = 0.25
+qE = 1 - qI
+w, h = 48*n_scale, 32*n_scale
+E_w, E_h = int(w*np.sqrt(qE)), int(h*np.sqrt(qE))
+num_E, size_E = E_w*E_h, (E_h, E_w)
+Ip_w, Ip_h = int(w*np.sqrt(qI)), int(h*np.sqrt(qI))
+num_Ip, size_Ip = Ip_w*Ip_h, (Ip_h, Ip_w)
+num_ff = num = num_E + num_Ip
 prob = 0.25
 tau_scale = 10
 tau_E = 2 * tau_scale
@@ -22,24 +29,25 @@ V_threshold = 1.
 gl = -0.15
 
 # ===== CANN Parameters =====
-cann_scale = 1.0
+a = bm.pi/6
+cann_scale = 1.0 / (bm.sqrt(bm.pi/2)*a)
 tau_Es = 15 * tau_scale
-tau_Is = 0.6 * tau_scale
-gEE = 114. * cann_scale / (size_E*1.0)
-gEIp = 16. * cann_scale / (size_E*prob)
-gIpE = -11. * cann_scale / (size_Ip*prob)
-gIpIp = -4. * cann_scale / (size_Ip*prob)
-shunting_k = 1.0
+tau_Is = 5 * tau_scale
+gEE = 113.85 * cann_scale / (num_E*1.0)
+gEIp = 15.8 * cann_scale / (num_E*prob)
+gIpE = -10.7 * cann_scale / (num_Ip*prob)
+gIpIp = -3.95 * cann_scale / (num_Ip*prob)
+shunting_k = 4.0
 
-f_E = 0.1
+f_E = 0.1 / (bm.sqrt(bm.pi/2)*a)
 f_I = 0.
 mu = 1.0
 
 
 def run(exp_id):
-    net = CANN(size_E=size_E, size_Ip=size_Ip, tau_E=tau_E, tau_I=tau_I, tau_Es=tau_Es, tau_Is=tau_Is,
+    net = CANN2D(size_E=size_E, size_Ip=size_Ip, tau_E=tau_E, tau_I=tau_I, tau_Es=tau_Es, tau_Is=tau_Is,
                V_reset=V_reset, V_threshold=V_threshold, prob=prob,
-               gl=gl, gEE=gEE, gEIp=gEIp, gIpIp=gIpIp, gIpE=gIpE, shunting_k=shunting_k)
+               gl=gl, gEE=gEE, gEIp=gEIp, gIpIp=gIpIp, gIpE=gIpE, shunting_k=shunting_k, a=a)
 
     # fetch protocols
     input_specs = input_setup[exp_id]
@@ -54,9 +62,12 @@ def run(exp_id):
 
     runner = bp.dyn.DSRunner(net,
                              jit=True,
-                             monitors=['Ip.V', 'E.V', 'E.spike', 'Ip.spike',
-                                       'E2E_s.g', 'E2I_s.g',
-                                       'I2I_s.g', 'I2E_s.g',
+                             monitors=[
+                                       # 'Ip.V', 'E.V',
+                                       'E.spike', 'Ip.spike',
+                                       # 'E2E_s.g', 'E2I_s.g',
+                                       # 'I2I_s.g', 'I2E_s.g',
+                                       # 'ESI.output_value',
                                        ],
                              inputs=[('E.ext_input', E_inp, 'iter', '='),
                                      ('Ip.ext_input', I_inp, 'iter', '=')],
@@ -69,16 +80,8 @@ def run(exp_id):
 
 if __name__ == "__main__":
     # Available protocols are:
-    # 'background_input': background input only for checking spontaneous activity
     # 'persistent_input': persistent input for bump holding task
-    # 'noisy_input': persistent input for bump holding task
-    # 'global_inhibition': input with two bumps for global inhibition test
     # 'tracking_input': tracks a moving input
-    # 'compare_speed_input': population readout for convergence rate analysis
-    # 'compare_current_input': plot current for convergence rate analysis
-    # 'compare_noise_sensitivity_input': compare bump sensitivity to noise
-    # 'sudden_change_stimulus_converge': analyze converging speed
-    # 'smooth_moving_stimulus_lag': compute the lag between stimulus and response
-
+    # 'spiking_camera_input': use spiking camera data as input
     plt.style.use('ggplot')
-    run('persistent_input')
+    run('spiking_camera_input')
