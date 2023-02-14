@@ -44,10 +44,9 @@ JEI = jei / bm.sqrt(num_exc*prob)
 gl = -0.15
 
 # inputs
-mu = 1.0  # can be thought of as mean firing rate of input neuron
 f_E = 0.1
-f_I = 0.07
-
+f_I = 0.
+mu = 1.0  # can be thought of as mean firing rate of input neuron
 
 def run(exp_id):
     net = EINet(num_exc=num_exc, num_inh=num_inh, tau_E=tau_E, tau_I=tau_I, tau_Ef=tau_Ef, tau_If=tau_If,
@@ -86,6 +85,6 @@ if __name__ == '__main__':
     # 'staircase_input': staircase-like input
     # 'staircase_powerspec_input': staircase-like input for power spectrum analysis
     plt.style.use('ggplot')
-    run('staircase_powerspec_input')
+    run('constant_input')
 
 

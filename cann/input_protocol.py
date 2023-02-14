@@ -30,11 +30,12 @@ def background_input_protocol(amplitude, duration, dt=global_dt):
 
 def persistent_input_protocol(amplitude, duration, dt=global_dt):
     size_E, size_I, stim_a = 750, 250, 2*(bm.pi/6)**2
-    bg_str = amplitude * 0.1
-    st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[2500.], dt=global_dt)
+    # bg_str = amplitude * 0.3
+    bg_str = amplitude * 0.0
+    st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[500.], dt=global_dt)
     ramp_amp = bp.inputs.ramp_input(c_start=0, c_end=1 - bg_str, duration=100., dt=global_dt)
     hold_amp = bp.inputs.section_input(values=[[1 - bg_str]], durations=[1400.], dt=global_dt)
-    remove_amp = bp.inputs.section_input(values=[[bg_str]], durations=[duration-4000.], dt=global_dt)
+    remove_amp = bp.inputs.section_input(values=[[bg_str]], durations=[duration-3000.], dt=global_dt)
 
     E_bump = generate_bump_stimulus(0., size_E, stim_a)
     I_bump = generate_bump_stimulus(0., size_I, stim_a)
@@ -146,8 +147,8 @@ def global_inhibition_protocol(amplitude, duration, dt=global_dt):
 
 def tracking_input_protocol(amplitude, duration, n_period, dt=global_dt):
     size_E, size_I, stim_a = 750, 250, 2*(bm.pi/6)**2
-    bg_str = amplitude * 0.1
-    bump_str = amplitude * 1.0
+    bg_str = amplitude * 0.3
+    bump_str = amplitude - bg_str
     n_step = int(duration / dt)
     pos = bm.linspace(-bm.pi*2/4, n_period*2*bm.pi, n_step)[:, None]
     E_inputs = bump_str * generate_bump_stimulus(pos, size_E, stim_a) + bg_str
@@ -158,7 +159,7 @@ def tracking_input_protocol(amplitude, duration, n_period, dt=global_dt):
 
 def compare_speed_input_protocol(amplitude, duration, dt=global_dt):
     size_E, size_I, stim_a = 750, 250, 2*(bm.pi/6)**2
-    bg_str = amplitude * 0.1
+    bg_str = amplitude * 0.3
     st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[500.], dt=global_dt)
     ramp_amp = bp.inputs.ramp_input(c_start=0, c_end=1 - bg_str, duration=10., dt=global_dt)
     hold_amp = bp.inputs.section_input(values=[[1 - bg_str]], durations=[duration-510.], dt=global_dt)
@@ -184,7 +185,7 @@ def compare_speed_input_protocol(amplitude, duration, dt=global_dt):
 
 def compare_current_input_protocol(amplitude, duration, dt=global_dt):
     size_E, size_I, stim_a = 750, 250, 2*(bm.pi/6)**2
-    bg_str = amplitude * 0.1
+    bg_str = amplitude * 0.3
     st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[1000.], dt=global_dt)
     ramp_amp = bp.inputs.ramp_input(c_start=0, c_end=1 - bg_str, duration=10., dt=global_dt)
     hold_amp = bp.inputs.section_input(values=[[1 - bg_str]], durations=[duration-1010.], dt=global_dt)
@@ -267,10 +268,10 @@ input_setup = {
     "persistent_input": partial(persistent_input_protocol, amplitude=1.0, duration=5000., dt=global_dt),
     "noisy_input": partial(noisy_input_protocol, amplitude=1.0, duration=3000., dt=global_dt),
     "global_inhibition": partial(global_inhibition_protocol, amplitude=1.0, duration=4700.),
-    "tracking_input": partial(tracking_input_protocol, amplitude=1.0, duration=3000, n_period=10., dt=global_dt),
-    "compare_speed_input": partial(compare_speed_input_protocol, amplitude=1.0, duration=1500., dt=global_dt),
+    "tracking_input": partial(tracking_input_protocol, amplitude=1.0, duration=3000, n_period=1., dt=global_dt),
+    "compare_speed_input": partial(compare_speed_input_protocol, amplitude=1.0, duration=2500., dt=global_dt),
     "compare_current_input": partial(compare_current_input_protocol, amplitude=1.0, duration=3000., dt=global_dt),
-    "compare_noise_sensitivity_input": partial(compare_noise_sensitivity_input_protocol, signal_amplitude=1.0, noise_amplitude=0.2, noise_cv=1.0, duration=3000., dt=global_dt),
+    "compare_noise_sensitivity_input": partial(compare_noise_sensitivity_input_protocol, signal_amplitude=1.0, noise_amplitude=0.3, noise_cv=1.0, duration=3000., dt=global_dt),
     "sudden_change_stimulus_converge": partial(sudden_change_stimulus, amplitude=1.0, wait_dur=300., sti_dur=300., dt=global_dt),
     "smooth_moving_stimulus_lag": partial(smooth_moving_stimulus, amplitude=1.0, duration=3000, n_period=10, dt=global_dt),
 }

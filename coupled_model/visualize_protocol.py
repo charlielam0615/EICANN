@@ -1,5 +1,6 @@
 import brainpy as bp
 import brainpy.math as bm
+import numpy as np
 import matplotlib.pyplot as plt
 from functools import partial
 
@@ -29,58 +30,84 @@ def background_input_protocol(runner, net, E_inp):
 
 
 def persistent_input_protocol(runner, net, E_inp, duration, input_duration, neuron_indices):
-    fig, gs = bp.visualize.get_figure(3, 1, 2, 8)
+    fig, gs = bp.visualize.get_figure(1, 1, 2, 8)
     # raster plot on E
-    fig.add_subplot(gs[:1, 0])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=[0, duration], markersize=1., alpha=0.5)
+    axes = fig.add_subplot(gs[:1, 0])
+    # only visualize a portion of E neurons to avoid heavy drawing
+    size_E = net.size_E
+    n_skip = bm.maximum(size_E // 750, 1).item()
+    E_spike = runner.mon['E.spike'][:, ::n_skip]
+    bp.visualize.raster_plot(runner.mon.ts, E_spike, xlim=[0, duration], markersize=1., alpha=0.5)
     plt.plot(input_duration, [int(net.size_E / 2), int(net.size_E / 2)], label='input peak',
              color='red')
+    # set ticks with correct scaling
+    ytick_list = axes.get_yticks().tolist()
+    ytick_label = [int(ytick_value*n_skip) for ytick_value in ytick_list]
+    axes.set_yticklabels(ytick_label)
+
     # raster plot on Ip
     # fig.add_subplot(gs[1:2, 0])
     # bp.visualize.raster_plot(runner.mon.ts, runner.mon['Ip.spike'], markersize=1.)
     # current plot for center E and peripheral E
 
-    for i in range(1):
-        fig.add_subplot(gs[1 + 2 * i:3 + 2 * i, 0])
-        neuron_index = int(neuron_indices[i] * net.size_E)
-        Ec_inp = runner.mon['E2E_s.g'][:, neuron_index] + runner.mon['E2E_f.g'][:, neuron_index]
-        Fc_inp = E_inp[:, neuron_index]
-        shunting_inp = net.shunting_k * (Ec_inp + Fc_inp) * runner.mon['I2E_s.g'][:, neuron_index]
-        Ic_inp = runner.mon['I2E_s.g'][:, neuron_index] + runner.mon['I2E_f.g'][:, neuron_index]
-        leak = net.E.gl * runner.mon['E.V'][:, neuron_index]
-        total_inp = Ec_inp + Ic_inp + Fc_inp + shunting_inp + leak
-        bp.visualize.line_plot(runner.mon.ts, Ec_inp, legend='rec_E', alpha=0.5)
-        bp.visualize.line_plot(runner.mon.ts, Fc_inp, legend='F', alpha=0.5)
-        bp.visualize.line_plot(runner.mon.ts, Ic_inp, legend='rec_I', alpha=0.5)
-        bp.visualize.line_plot(runner.mon.ts, shunting_inp, legend='shunting_inp', alpha=0.5)
-        bp.visualize.line_plot(runner.mon.ts, total_inp, legend='Total', alpha=0.5)
-        bp.visualize.line_plot(runner.mon.ts, leak, legend='leak', alpha=0.5)
-
-        # EI_inp = runner.mon['E2E_f.g'][:, neuron_index] + runner.mon['I2E_f.g'][:, neuron_index]
-        # shunting_inp = net.shunting_k * (Ec_inp + Fc_inp) * runner.mon['I2E_s.g'][:, neuron_index]
-        # CA_inp = runner.mon['E2E_s.g'][:, neuron_index] + shunting_inp + runner.mon['I2E_s.g'][:, neuron_index]
-        # CA_effective_inp = EI_inp + Fc_inp
-        # total_inp = EI_inp + CA_inp + leak + Fc_inp
-        # bp.visualize.line_plot(runner.mon.ts, EI_inp, legend='EI_inp', alpha=0.5)
-        # bp.visualize.line_plot(runner.mon.ts, CA_inp, legend='CA_inp', alpha=0.5)
-        # bp.visualize.line_plot(runner.mon.ts, CA_effective_inp, legend='CA_effective_inp', alpha=1.0)
-        # bp.visualize.line_plot(runner.mon.ts, total_inp, legend='total_inp', alpha=0.5)
-
-        plt.legend(loc=4)
-        plt.grid('on')
+    # for i in range(1):
+    #     fig.add_subplot(gs[1 + 2 * i:3 + 2 * i, 0])
+    #     neuron_index = int(neuron_indices[i] * net.size_E)
+    #
+    #     Ec_inp = runner.mon['E2E_s.g'][:, neuron_index] + runner.mon['E2E_f.g'][:, neuron_index]
+    #     Fc_inp = E_inp[:, neuron_index]
+    #     # shunting_inp = net.shunting_k * (Ec_inp + Fc_inp) * runner.mon['I2E_s.g'][:, neuron_index]
+    #     # Ic_inp = runner.mon['I2E_s.g'][:, neuron_index] + runner.mon['I2E_f.g'][:, neuron_index]
+    #     leak = net.E.gl * runner.mon['E.V'][:, neuron_index]
+    #     # total_inp = Ec_inp + Ic_inp + Fc_inp + shunting_inp + leak
+    #     # bp.visualize.line_plot(runner.mon.ts, Ec_inp, legend='rec_E', alpha=0.5)
+    #     # bp.visualize.line_plot(runner.mon.ts, Fc_inp, legend='F', alpha=0.5)
+    #     # bp.visualize.line_plot(runner.mon.ts, Ic_inp, legend='rec_I', alpha=0.5)
+    #     # bp.visualize.line_plot(runner.mon.ts, shunting_inp, legend='shunting_inp', alpha=0.5)
+    #     # bp.visualize.line_plot(runner.mon.ts, total_inp, legend='Total', alpha=0.5)
+    #     # bp.visualize.line_plot(runner.mon.ts, leak, legend='leak', alpha=0.5)
+    #
+    #     EI_inp = runner.mon['E2E_f.g'][:, neuron_index] + runner.mon['I2E_f.g'][:, neuron_index]
+    #     shunting_inp = net.shunting_k * (Ec_inp + Fc_inp) * runner.mon['I2E_s.g'][:, neuron_index]
+    #     CA_inp = runner.mon['E2E_s.g'][:, neuron_index] + shunting_inp + runner.mon['I2E_s.g'][:, neuron_index]
+    #     CA_effective_inp = EI_inp + Fc_inp
+    #     total_inp = EI_inp + CA_inp + leak + Fc_inp
+    #     bp.visualize.line_plot(runner.mon.ts, EI_inp, legend='EI_inp', alpha=0.5)
+    #     bp.visualize.line_plot(runner.mon.ts, CA_inp, legend='CA_inp', alpha=0.5)
+    #     bp.visualize.line_plot(runner.mon.ts, CA_effective_inp, legend='CA_effective_inp', alpha=1.0)
+    #     bp.visualize.line_plot(runner.mon.ts, total_inp, legend='total_inp', alpha=0.5)
+    #
+    #     plt.legend(loc=4)
+    #     plt.grid('on')
 
     plt.show()
 
 
 def check_balance_input_protocol(runner, net, E_inp, duration, input_duration, neuron_indices):
-    fig, gs = bp.visualize.get_figure(3, 1, 1.5, 5)
+    fig, gs = bp.visualize.get_figure(3, 1, 3, 6)
     # current plot for center Ip
     fig.add_subplot(gs[:1, 0])
     bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1.)
     # plt.plot(input_duration, [int(net.size_E / 2), int(net.size_E / 2)], label='input peak', color='red')
 
-    # current plot for center E
     fig.add_subplot(gs[1:2, 0])
+    neuron_index = neuron_indices[0]
+    Ec_inp = runner.mon['E2E_s.g'] + runner.mon['E2E_f.g']
+    Fc_inp = E_inp
+    shunting_inp = net.shunting_k * (Ec_inp + Fc_inp) * runner.mon['I2E_s.g']
+    Ic_inp = runner.mon['I2E_s.g'] + runner.mon['I2E_f.g']
+    total_inp = Ec_inp + Ic_inp + Fc_inp + shunting_inp
+    bp.visualize.line_plot(runner.mon.ts, (Ec_inp+Fc_inp)[:, neuron_index], legend='E', alpha=0.5)
+    bp.visualize.line_plot(runner.mon.ts, (Ic_inp+shunting_inp)[:, neuron_index], legend='I', alpha=0.5)
+    bp.visualize.line_plot(runner.mon.ts, total_inp[:, neuron_index], legend='Total', alpha=0.5)
+
+    # fig.axes[1].yaxis.set_ticks([0])
+    plt.legend(loc=4)
+    plt.grid('on')
+    plt.ylabel(f'Neuron {neuron_index}')
+    print(f"Total input {bm.mean(total_inp[-30000:, neuron_index]):.5f}")
+
+    fig.add_subplot(gs[2:3, 0])
     neuron_index = neuron_indices[1]
     Ec_inp = runner.mon['E2E_s.g'] + runner.mon['E2E_f.g']
     Fc_inp = E_inp
@@ -90,14 +117,25 @@ def check_balance_input_protocol(runner, net, E_inp, duration, input_duration, n
     bp.visualize.line_plot(runner.mon.ts, (Ec_inp+Fc_inp)[:, neuron_index], legend='E', alpha=0.5)
     bp.visualize.line_plot(runner.mon.ts, (Ic_inp+shunting_inp)[:, neuron_index], legend='I', alpha=0.5)
     bp.visualize.line_plot(runner.mon.ts, total_inp[:, neuron_index], legend='Total', alpha=0.5)
-    fig.axes[1].yaxis.set_ticks([0])
+
+    # fig.axes[2].yaxis.set_ticks([0])
     plt.legend(loc=4)
     plt.grid('on')
     plt.ylabel(f'Neuron {neuron_index}')
 
-    # current plot for peripheral E
-    fig.add_subplot(gs[2:3, 0])
-    neuron_index = neuron_indices[2]
+    plt.show()
+
+
+def check_balance_flat_input_protocol(runner, net, E_inp, duration, input_duration, neuron_indices):
+    fig, gs = bp.visualize.get_figure(3, 1, 1.5, 5)
+    # current plot for center Ip
+    fig.add_subplot(gs[:1, 0])
+    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1.)
+    # plt.plot(input_duration, [int(net.size_E / 2), int(net.size_E / 2)], label='input peak', color='red')
+
+    # current plot for center E
+    fig.add_subplot(gs[1:2, 0])
+    neuron_index = neuron_indices[0]
     Ec_inp = runner.mon['E2E_s.g'] + runner.mon['E2E_f.g']
     Fc_inp = E_inp
     shunting_inp = net.shunting_k * (Ec_inp + Fc_inp) * runner.mon['I2E_s.g']
@@ -106,7 +144,26 @@ def check_balance_input_protocol(runner, net, E_inp, duration, input_duration, n
     bp.visualize.line_plot(runner.mon.ts, (Ec_inp+Fc_inp)[:, neuron_index], legend='E', alpha=0.5)
     bp.visualize.line_plot(runner.mon.ts, (Ic_inp+shunting_inp)[:, neuron_index], legend='I', alpha=0.5)
     bp.visualize.line_plot(runner.mon.ts, total_inp[:, neuron_index], legend='Total', alpha=0.5)
-    fig.axes[2].yaxis.set_ticks([0])
+
+    # fig.axes[1].yaxis.set_ticks([0])
+    plt.legend(loc=4)
+    plt.grid('on')
+    plt.ylabel(f'Neuron {neuron_index}')
+    print(f"Total input {bm.mean(total_inp[-30000:, neuron_index]):.5f}")
+
+    # current plot for peripheral E
+    fig.add_subplot(gs[2:3, 0])
+    neuron_index = neuron_indices[1]
+    Ec_inp = runner.mon['E2E_s.g'] + runner.mon['E2E_f.g']
+    Fc_inp = E_inp
+    shunting_inp = net.shunting_k * (Ec_inp + Fc_inp) * runner.mon['I2E_s.g']
+    Ic_inp = runner.mon['I2E_s.g'] + runner.mon['I2E_f.g']
+    total_inp = Ec_inp + Ic_inp + Fc_inp + shunting_inp
+    bp.visualize.line_plot(runner.mon.ts, (Ec_inp+Fc_inp)[:, neuron_index], legend='E', alpha=0.5)
+    bp.visualize.line_plot(runner.mon.ts, (Ic_inp+shunting_inp)[:, neuron_index], legend='I', alpha=0.5)
+    bp.visualize.line_plot(runner.mon.ts, total_inp[:, neuron_index], legend='Total', alpha=0.5)
+
+    # fig.axes[2].yaxis.set_ticks([0])
     plt.legend(loc=4)
     plt.grid('on')
     plt.ylabel(f'Neuron {neuron_index}')
@@ -286,6 +343,8 @@ def sudden_change_stimulus(runner, net, E_inp, input_duration):
     plt.plot(ts, input_pos, alpha=0.5, label='input')
     plt.legend()
 
+    # np.savez('coupled_sudden_change.npz', ts=ts, bump_pos=bump_pos, input_pos=input_pos)
+
     return
 
 
@@ -316,15 +375,19 @@ def smooth_moving_stimulus(runner, net, E_inp, input_duration):
 
     # calculate lag
     fig.add_subplot(gs[2, 0])
-    plt.plot(ts, bm.minimum(bm.abs(input_pos-bump_pos), bm.abs(input_pos-bump_pos+2*bm.pi)))
+    lag = bm.minimum(bm.abs(input_pos-bump_pos), 2*bm.pi - bm.abs(input_pos-bump_pos))
+    plt.plot(ts, lag)
+
+    np.savez('coupled_tracking_lag.npz', ts=ts, lag=lag)
 
     return
 
 
 vis_setup = {
     "background_input": partial(background_input_protocol,),
-    "persistent_input": partial(persistent_input_protocol, duration=4000., input_duration=(500, 2000), neuron_indices=(0.5, 0.1)),
-    "check_balance_input": partial(check_balance_input_protocol, duration=1500., input_duration=(500, 1500), neuron_indices=[125, 375, 100]),
+    "persistent_input": partial(persistent_input_protocol, duration=2800., input_duration=(500, 2000), neuron_indices=(0.5, 0.1)),
+    "check_balance_input": partial(check_balance_input_protocol, duration=1500., input_duration=(500, 1500), neuron_indices=[int(375*3), int(125*3)]),
+    "check_balance_flat_input": partial(check_balance_flat_input_protocol, duration=1500., input_duration=(500, 1500), neuron_indices=[375, 125]),
     "noisy_input": partial(noisy_input_protocol, duration=3000., input_duration=(500, 3000)),
     "global_inhibition": partial(global_inhibition_protocol, small_bump_duration=(500, 4200), large_bump_duration=(1700, 4200), neuron_indices=[187, 563]),
     "tracking_input": partial(tracking_input_protocol, input_duration=(0, 3000)),

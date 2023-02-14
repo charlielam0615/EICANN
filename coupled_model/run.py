@@ -23,7 +23,7 @@ V_threshold = 1.
 gl = -0.15
 
 # ===== CANN Parameters =====
-cann_scale = 1.0
+cann_scale = 1.0 * 1
 tau_Es = 15 * tau_scale
 tau_Is = 0.6 * tau_scale
 gEE = 114. * cann_scale / (size_E*1.0)
@@ -46,7 +46,7 @@ JEE = jee / bm.sqrt(size_E*prob)
 JEI = jei / bm.sqrt(size_E*prob)
 
 # ======= Input Parameters ======
-f_E = 0.1
+f_E = 0.03
 f_I = 0.
 mu = 1.0
 
@@ -73,16 +73,19 @@ def run(exp_id):
     E_inp = Einp_scale * E_inp * mu
     I_inp = Iinp_scale * I_inp * mu
 
-    runner = bp.dyn.DSRunner(net,
-                             jit=True,
-                             monitors=['Id.V', 'Ip.V', 'E.V', 'E.spike', 'Ip.spike', 'Id.spike',
-                                       'E2E_s.g', 'E2E_f.g', 'E2I_s.g', 'E2I_f.g',
-                                       'I2I_s.g', 'I2I_f.g', 'I2E_s.g', 'I2E_f.g',
-                                       ],
-                             inputs=[('E.ext_input', E_inp, 'iter', '='),
-                                     ('Id.ext_input', I_inp, 'iter', '='),
-                                     ('Ip.ext_input', I_inp, 'iter', '=')],
-                             dt=global_dt)
+    runner = bp.DSRunner(net,
+                         jit=True,
+                         monitors=[
+                             # 'Id.V', 'Ip.V', 'E.V',
+                             'E.spike',
+                             # 'Ip.spike', 'Id.spike',
+                             # 'E2E_s.g', 'E2E_f.g', 'E2I_s.g', 'E2I_f.g',
+                             # 'I2I_s.g', 'I2I_f.g', 'I2E_s.g', 'I2E_f.g',
+                         ],
+                         inputs=[('E.ext_input', E_inp, 'iter', '='),
+                                 ('Id.ext_input', I_inp, 'iter', '='),
+                                 ('Ip.ext_input', I_inp, 'iter', '=')],
+                         dt=global_dt)
     runner(duration)
     vis_func(runner, net, E_inp)
     plt.show()
@@ -93,7 +96,8 @@ if __name__ == "__main__":
     # Available protocols are:
     # 'background_input': background input only for checking spontaneous activity
     # 'persistent_input': persistent input for bump holding task
-    # 'check_balance_input: check balance condition in Ip
+    # 'check_balance_input: check balance condition in Ip using bump input
+    # 'check_balance_flat_input: check balance condition in Ip using flat input
     # 'noisy_input': persistent input for bump holding task
     # 'global_inhibition': input with two bumps for global inhibition test
     # 'tracking_input': tracks a moving input
@@ -103,5 +107,5 @@ if __name__ == "__main__":
     # 'sudden_change_stimulus_converge': analyze converging speed
     # 'smooth_moving_stimulus_lag': compute the lag between stimulus and response
     plt.style.use('ggplot')
-    print("criterion:", criterion)
+    # print("criterion:", criterion)
     run('persistent_input')

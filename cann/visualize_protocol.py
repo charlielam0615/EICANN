@@ -1,5 +1,6 @@
 import brainpy as bp
 import brainpy.math as bm
+import numpy as np
 import matplotlib.pyplot as plt
 from functools import partial
 
@@ -38,7 +39,7 @@ def persistent_input_protocol(runner, net, E_inp, duration, input_duration, neur
     # raster plot on Ip
     # fig.add_subplot(gs[1:2, 0])
     # bp.visualize.raster_plot(runner.mon.ts, runner.mon['Ip.spike'], markersize=1.)
-    # current plot for center E and peripheral E
+    # # current plot for center E and peripheral E
     # for i in range(1):
     #     fig.add_subplot(gs[1 + 2 * i:3 + 2 * i, 0])
     #     neuron_index = neuron_indices[i]
@@ -159,7 +160,7 @@ def compare_speed_input_protocol(runner, net, E_inp, duration, input_duration):
     ma = moving_average(runner.mon['E.spike'], n=T, axis=0)  # average window: 1 ms
     bump_activity = bm.vstack([bm.sum(ma * bm.cos(x[None,]), axis=1), bm.sum(ma * bm.sin(x[None,]), axis=1)])
     readout = bm.array([[1., 0.]]) @ bump_activity
-    nm_readout = readout.T / bm.mean(readout[:, int(input_duration[0]/runner.dt*1.5):int(input_duration[1]/runner.dt)])
+    nm_readout = readout.T / bm.mean(readout[int(input_duration[0]/runner.dt*1.5):int(input_duration[1]/runner.dt)])
     ma_input = moving_average(E_inp[:, neuron_index], n=T, axis=0)
     fitted = moving_average(nm_readout, n=T * 10, axis=0)
     plt.plot(ts, nm_readout, label='projection', alpha=0.5)
@@ -174,7 +175,7 @@ def compare_current_input_protocol(runner, net, E_inp, duration, input_duration,
     # raster E plot
     fig.add_subplot(gs[0, 0])
     bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.2)
-    plt.xlim([500, duration])
+    plt.xlim([0, duration])
     # plot current on central E
     fig.add_subplot(gs[1, 0])
     Ec_inp = runner.mon['E2E_s.g']
@@ -185,12 +186,12 @@ def compare_current_input_protocol(runner, net, E_inp, duration, input_duration,
     total_inp = Ec_inp + Ic_inp + Fc_inp + shunting_inp + leak
     bp.visualize.line_plot(runner.mon.ts, (Fc_inp+Ec_inp)[:, neuron_index], legend='E', alpha=0.5)
     bp.visualize.line_plot(runner.mon.ts, (Ic_inp+shunting_inp+leak)[:, neuron_index], legend='I', alpha=0.5)
-    bp.visualize.line_plot(runner.mon.ts, total_inp[:, neuron_index], legend='Total', alpha=0.5)
-    bp.visualize.line_plot(runner.mon.ts, Fc_inp[:, neuron_index], legend='Feedforward', linestyle='--',alpha=0.5)
+    bp.visualize.line_plot(runner.mon.ts, total_inp[:, neuron_index], legend='Total', alpha=1.0)
+    # bp.visualize.line_plot(runner.mon.ts, Fc_inp[:, neuron_index], legend='Feedforward', linestyle='--',alpha=0.5)
     plt.ylabel(f"Neuron {neuron_index}")
     plt.legend(loc='upper right')
     plt.grid('on')
-    plt.xlim([500, duration])
+    plt.xlim([0, duration])
     plt.tight_layout()
     plt.show()
 
@@ -247,6 +248,8 @@ def sudden_change_stimulus(runner, net, E_inp, input_duration):
     plt.plot(ts, bump_pos, alpha=0.5)
     plt.plot(ts, input_pos, alpha=0.5)
 
+    # np.savez('cann_sudden_change.npz', ts=ts, bump_pos=bump_pos, input_pos=input_pos)
+
     return
 
 
@@ -277,19 +280,22 @@ def smooth_moving_stimulus(runner, net, E_inp, input_duration):
 
     # calculate lag
     fig.add_subplot(gs[2, 0])
-    plt.plot(ts, bm.minimum(bm.abs(input_pos-bump_pos), bm.abs(input_pos-bump_pos+2*bm.pi)))
+    lag = bm.minimum(bm.abs(input_pos-bump_pos), 2*bm.pi - bm.abs(input_pos-bump_pos))
+    plt.plot(ts, lag)
+
+    np.savez('cann_tracking_lag.npz', ts=ts, lag=lag)
 
     return
 
 
 vis_setup = {
     "background_input": partial(background_input_protocol,),
-    "persistent_input": partial(persistent_input_protocol, duration=5000., input_duration=(2500, 4000), neuron_indices=(375, 100)),
+    "persistent_input": partial(persistent_input_protocol, duration=4000., input_duration=(500, 2000), neuron_indices=(375, 100)),
     "noisy_input": partial(noisy_input_protocol, duration=3000., input_duration=(500, 3000)),
     "global_inhibition": partial(global_inhibition_protocol, small_bump_duration=(500, 2700), large_bump_duration=(1600, 2700), neuron_indices=[187, 563]),
     "tracking_input": partial(tracking_input_protocol, input_duration=(0, 3000)),
-    "compare_speed_input": partial(compare_speed_input_protocol, duration=1500., input_duration=(500, 1500)),
-    "compare_current_input": partial(compare_current_input_protocol, duration=3000., input_duration=(1000, 3000), neuron_index=375),
+    "compare_speed_input": partial(compare_speed_input_protocol, duration=2500., input_duration=(500, 2500)),
+    "compare_current_input": partial(compare_current_input_protocol, duration=3000., input_duration=(1000, 3000), neuron_index=700),
     "compare_noise_sensitivity_input": partial(compare_noise_sensitivity_input_protocol, duration=3000.),
     "sudden_change_stimulus_converge": partial(sudden_change_stimulus, input_duration=(300, 300)),
     "smooth_moving_stimulus_lag": partial(smooth_moving_stimulus, input_duration=(0, 3000)),

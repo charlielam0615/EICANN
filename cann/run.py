@@ -22,8 +22,13 @@ V_threshold = 1.
 gl = -0.15
 
 # ===== CANN Parameters =====
+# Turning-off-with-excitation
+# cann_scale = 1.0 * 1.5
+# tau_Es = 0.3 * tau_scale
+
 cann_scale = 1.0
 tau_Es = 15 * tau_scale
+
 tau_Is = 0.6 * tau_scale
 gEE = 114. * cann_scale / (size_E*1.0)
 gEIp = 16. * cann_scale / (size_E*prob)
@@ -31,7 +36,7 @@ gIpE = -11. * cann_scale / (size_Ip*prob)
 gIpIp = -4. * cann_scale / (size_Ip*prob)
 shunting_k = 1.0
 
-f_E = 0.1
+f_E = 0.03
 f_I = 0.
 mu = 1.0
 
@@ -52,16 +57,19 @@ def run(exp_id):
     E_inp = Einp_scale * E_inp * mu
     I_inp = Iinp_scale * I_inp * mu
 
-    runner = bp.dyn.DSRunner(net,
-                             jit=True,
-                             monitors=['Ip.V', 'E.V', 'E.spike', 'Ip.spike',
-                                       'E2E_s.g', 'E2I_s.g',
-                                       'I2I_s.g', 'I2E_s.g',
-                                       ],
-                             inputs=[('E.ext_input', E_inp, 'iter', '='),
-                                     ('Ip.ext_input', I_inp, 'iter', '=')],
-                             dt=global_dt)
-    runner(duration)
+    runner = bp.DSRunner(net,
+                         jit=True,
+                         monitors=[
+                                   # 'Ip.V', 'E.V',
+                                   'E.spike',
+                                   # 'Ip.spike',
+                                   # 'E2E_s.g', 'E2I_s.g',
+                                   # 'I2I_s.g', 'I2E_s.g',
+                                   ],
+                         inputs=[('E.ext_input', E_inp, 'iter', '='),
+                                 ('Ip.ext_input', I_inp, 'iter', '=')],
+                         dt=global_dt)
+    runner(duration=duration)
     vis_func(runner, net, E_inp)
     plt.show()
     return
@@ -81,4 +89,4 @@ if __name__ == "__main__":
     # 'smooth_moving_stimulus_lag': compute the lag between stimulus and response
 
     plt.style.use('ggplot')
-    run('persistent_input')
+    run('compare_speed_input')
