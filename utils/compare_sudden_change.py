@@ -19,22 +19,5 @@ def compare_sudden_change():
     plt.show()
 
 
-def compare_tracking_lag():
-    cann_data = np.load("compare_tracking_lag/cann_tracking_lag.npz")
-    coupled_data = np.load("compare_tracking_lag/coupled_tracking_lag.npz")
-
-    cann_ts, cann_lag = cann_data['ts'], cann_data['lag']
-    coupled_ts, coupled_lag = coupled_data['ts'], coupled_data['lag']
-
-    plt.plot(cann_ts, cann_lag, linewidth=2., label="CANN Lag", alpha=0.5)
-    plt.plot(coupled_ts, coupled_lag, linewidth=2., label="Balanced Lag", alpha=0.7)
-    plt.xlabel("Time (ms)")
-    plt.ylabel("Position (rad)")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-
-
 if __name__ == "__main__":
-    plt.style.use('ggplot')
-    compare_tracking_lag()
+    compare_sudden_change()
