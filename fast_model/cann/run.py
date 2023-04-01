@@ -10,7 +10,7 @@ global_dt = 0.01
 
 # ==== Neuron parameters =====
 n_scale = 1
-size_E, size_Ip, size_ff = 750*n_scale, 250*n_scale, 1000*n_scale
+size_E, size_Ip = 800*n_scale, 100*n_scale
 num = size_E + size_Ip
 num_ff = num
 prob = 0.25
@@ -22,14 +22,14 @@ V_threshold = 1.
 gl = -0.15
 
 # ===== CANN Parameters =====
-cann_scale = 1.0
+cann_scale = 0.8
 tau_Es = 0.5 * tau_scale
 tau_Is = 0.6 * tau_scale
-gEE = 4.8 * cann_scale / bm.sqrt(num)
-gEIp = 2.675 * cann_scale / bm.sqrt(num)
-gIpE = -5.41 * cann_scale / bm.sqrt(num)
-gIpIp = -2. * cann_scale / bm.sqrt(num)
-shunting_k = 2.0
+gEE = 114. * cann_scale / (size_E*1.0)
+gEIp = 16. * cann_scale / (size_E*prob)
+gIpE = -11. * cann_scale / (size_Ip*prob)
+gIpIp = -4. * cann_scale / (size_Ip*prob)
+shunting_k = 1.0
 
 f_E = 0.1
 f_I = 0.

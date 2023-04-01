@@ -4,7 +4,7 @@ from functools import partial
 
 
 global_dt = 0.01
-
+size_E, size_I, stim_a = 800, 100, 2 * (bm.pi / 6) ** 2
 
 def generate_bump_stimulus(pos, size_n, stim_a):
     def dist(d):
@@ -20,7 +20,6 @@ def generate_bump_stimulus(pos, size_n, stim_a):
 
 
 def background_input_protocol(amplitude, duration, dt=global_dt):
-    size_E, size_I, stim_a = 750, 250, 2*(bm.pi/6)**2
     bg_str = amplitude * 0.1
     st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[duration], dt=global_dt)
     E_inputs = st_amp * bm.ones([1, size_E])
@@ -29,13 +28,11 @@ def background_input_protocol(amplitude, duration, dt=global_dt):
 
 
 def persistent_input_protocol(amplitude, duration, dt=global_dt):
-    size_E, size_I, stim_a = 750, 250, 2*(bm.pi/6)**2
-    # bg_str = amplitude * 0.3
-    bg_str = amplitude * 0.0
-    st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[500.], dt=global_dt)
-    ramp_amp = bp.inputs.ramp_input(c_start=0, c_end=1 - bg_str, duration=100., dt=global_dt)
-    hold_amp = bp.inputs.section_input(values=[[1 - bg_str]], durations=[1400.], dt=global_dt)
-    remove_amp = bp.inputs.section_input(values=[[bg_str]], durations=[duration-3000.], dt=global_dt)
+    bg_str = amplitude * 0.1
+    st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[399.], dt=global_dt)
+    ramp_amp = bp.inputs.ramp_input(c_start=0, c_end=1 - bg_str, duration=1., dt=global_dt)
+    hold_amp = bp.inputs.section_input(values=[[1 - bg_str]], durations=[1000.], dt=global_dt)
+    remove_amp = bp.inputs.section_input(values=[[bg_str]], durations=[duration-1400.], dt=global_dt)
 
     E_bump = generate_bump_stimulus(0., size_E, stim_a)
     I_bump = generate_bump_stimulus(0., size_I, stim_a)
@@ -59,7 +56,6 @@ def persistent_input_protocol(amplitude, duration, dt=global_dt):
 
 
 def noisy_input_protocol(amplitude, duration, dt=global_dt):
-    size_E, size_I, stim_a = 750, 250, 2*(bm.pi/6)**2
     bg_str = amplitude * 0.1
     st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[500.], dt=global_dt)
     ramp_amp = bp.inputs.ramp_input(c_start=0, c_end=1-bg_str, duration=100., dt=global_dt)
@@ -92,7 +88,6 @@ def noisy_input_protocol(amplitude, duration, dt=global_dt):
 
 
 def global_inhibition_protocol(amplitude, duration, dt=global_dt):
-    size_E, size_I, stim_a = 750, 250, 2*(bm.pi/6)**2
     bg_str = amplitude * 0.1
     small_amp = amplitude * 0.4
     large_amp = amplitude * 0.9
@@ -146,11 +141,10 @@ def global_inhibition_protocol(amplitude, duration, dt=global_dt):
 
 
 def tracking_input_protocol(amplitude, duration, n_period, dt=global_dt):
-    size_E, size_I, stim_a = 750, 250, 2*(bm.pi/6)**2
-    bg_str = amplitude * 0.3
+    bg_str = amplitude * 0.1
     bump_str = amplitude - bg_str
     n_step = int(duration / dt)
-    pos = bm.linspace(-bm.pi*2/4, n_period*2*bm.pi, n_step)[:, None]
+    pos = bm.linspace(-bm.pi/2, n_period*bm.pi/2, n_step)[:, None]
     E_inputs = bump_str * generate_bump_stimulus(pos, size_E, stim_a) + bg_str
     I_inputs = bump_str * generate_bump_stimulus(pos, size_I, stim_a) + bg_str
 
@@ -158,8 +152,7 @@ def tracking_input_protocol(amplitude, duration, n_period, dt=global_dt):
 
 
 def compare_speed_input_protocol(amplitude, duration, dt=global_dt):
-    size_E, size_I, stim_a = 750, 250, 2*(bm.pi/6)**2
-    bg_str = amplitude * 0.3
+    bg_str = amplitude * 0.1
     st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[500.], dt=global_dt)
     ramp_amp = bp.inputs.ramp_input(c_start=0, c_end=1 - bg_str, duration=10., dt=global_dt)
     hold_amp = bp.inputs.section_input(values=[[1 - bg_str]], durations=[duration-510.], dt=global_dt)
@@ -184,11 +177,10 @@ def compare_speed_input_protocol(amplitude, duration, dt=global_dt):
 
 
 def compare_current_input_protocol(amplitude, duration, dt=global_dt):
-    size_E, size_I, stim_a = 750, 250, 2*(bm.pi/6)**2
-    bg_str = amplitude * 0.3
-    st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[1000.], dt=global_dt)
-    ramp_amp = bp.inputs.ramp_input(c_start=0, c_end=1 - bg_str, duration=10., dt=global_dt)
-    hold_amp = bp.inputs.section_input(values=[[1 - bg_str]], durations=[duration-1010.], dt=global_dt)
+    bg_str = amplitude * 0.1
+    st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[999.], dt=global_dt)
+    ramp_amp = bp.inputs.ramp_input(c_start=0, c_end=1 - bg_str, duration=1., dt=global_dt)
+    hold_amp = bp.inputs.section_input(values=[[1 - bg_str]], durations=[duration-1000.], dt=global_dt)
 
     E_bump = generate_bump_stimulus(0., size_E, stim_a)
     I_bump = generate_bump_stimulus(0., size_I, stim_a)
@@ -198,6 +190,7 @@ def compare_current_input_protocol(amplitude, duration, dt=global_dt):
         ramp_amp[:, None] * E_bump[None, ] + bg_str*bm.ones([1, size_E]),
         hold_amp * E_bump[None, ] + bg_str * bm.ones([1, size_E]),
     ])
+    # E_inputs += E_inputs * bm.random.randn(*E_inputs.shape) * bm.sqrt(dt)
 
     # shouldn't matter, because Ip has random connection
     I_inputs = bm.concatenate([
@@ -205,12 +198,12 @@ def compare_current_input_protocol(amplitude, duration, dt=global_dt):
         ramp_amp[:, None] * I_bump[None, ] + bg_str*bm.ones([1, size_I]),
         hold_amp * I_bump[None, ] + bg_str * bm.ones([1, size_I]),
     ])
+    # I_inputs += I_inputs * bm.random.randn(*I_inputs.shape) * bm.sqrt(dt)
 
     return E_inputs, I_inputs, duration
 
 
 def compare_noise_sensitivity_input_protocol(signal_amplitude, noise_amplitude, noise_cv, duration, dt):
-    size_E, size_I, stim_a = 750, 250, 2*(bm.pi/6)**2
     bg_str = noise_amplitude
     stimulus_amp = bp.inputs.section_input(values=[[signal_amplitude-bg_str]], durations=[duration], dt=global_dt)
     stimulus_T = stimulus_amp.shape[0]
@@ -227,8 +220,6 @@ def compare_noise_sensitivity_input_protocol(signal_amplitude, noise_amplitude, 
 
 
 def sudden_change_stimulus(amplitude, wait_dur, sti_dur, dt):
-    size_E, size_I, stim_a = 750, 250, 2 * (bm.pi / 6) ** 2
-
     wait_amp = bp.inputs.section_input(values=[[amplitude]], durations=[wait_dur], dt=dt)
     sti_amp = bp.inputs.section_input(values=[[amplitude]], durations=[sti_dur], dt=dt)
 
@@ -253,7 +244,6 @@ def sudden_change_stimulus(amplitude, wait_dur, sti_dur, dt):
 
 
 def smooth_moving_stimulus(amplitude, duration, n_period, dt):
-    size_E, size_I, stim_a = 750, 250, 2 * (bm.pi / 6) ** 2
     bg_str = amplitude * 0.1
     bump_str = amplitude * 1.0
     n_step = int(duration / dt)
@@ -265,15 +255,18 @@ def smooth_moving_stimulus(amplitude, duration, n_period, dt):
 
 input_setup = {
     "background_input": partial(background_input_protocol, amplitude=1.0, duration=2000., dt=global_dt),
-    "persistent_input": partial(persistent_input_protocol, amplitude=1.0, duration=5000., dt=global_dt),
+    "persistent_input": partial(persistent_input_protocol, amplitude=1.0, duration=2400., dt=global_dt),
     "noisy_input": partial(noisy_input_protocol, amplitude=1.0, duration=3000., dt=global_dt),
     "global_inhibition": partial(global_inhibition_protocol, amplitude=1.0, duration=4700.),
-    "tracking_input": partial(tracking_input_protocol, amplitude=1.0, duration=3000, n_period=1., dt=global_dt),
-    "compare_speed_input": partial(compare_speed_input_protocol, amplitude=1.0, duration=2500., dt=global_dt),
+    "tracking_input": partial(tracking_input_protocol, amplitude=1.0, duration=1500, n_period=1., dt=global_dt),
+    "compare_speed_input": partial(compare_speed_input_protocol, amplitude=1.0, duration=1500., dt=global_dt),
     "compare_current_input": partial(compare_current_input_protocol, amplitude=1.0, duration=3000., dt=global_dt),
-    "compare_noise_sensitivity_input": partial(compare_noise_sensitivity_input_protocol, signal_amplitude=1.0, noise_amplitude=0.3, noise_cv=1.0, duration=3000., dt=global_dt),
-    "sudden_change_stimulus_converge": partial(sudden_change_stimulus, amplitude=1.0, wait_dur=300., sti_dur=300., dt=global_dt),
-    "smooth_moving_stimulus_lag": partial(smooth_moving_stimulus, amplitude=1.0, duration=3000, n_period=10, dt=global_dt),
+    "compare_noise_sensitivity_input": partial(compare_noise_sensitivity_input_protocol, signal_amplitude=1.0,
+                                               noise_amplitude=0.1, noise_cv=1.0, duration=2000., dt=global_dt),
+    "sudden_change_stimulus_converge": partial(sudden_change_stimulus, amplitude=1.0, wait_dur=300., sti_dur=300.,
+                                               dt=global_dt),
+    "smooth_moving_stimulus_lag": partial(smooth_moving_stimulus, amplitude=1.0, duration=3000, n_period=2,
+                                          dt=global_dt),
 }
 
 

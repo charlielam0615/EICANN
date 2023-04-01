@@ -4,8 +4,9 @@ import brainpy.math as bm
 
 class UnitExpCUBA(Exponential):
     def __init__(self, pre, post, conn, tau, g_max, **kwargs):
-        super().__init__(pre, post, conn, tau=tau, g_max=g_max/tau, **kwargs)
-        # self.g_max = self.g_max / tau
+        # super().__init__(pre, post, conn, tau=tau, g_max=g_max/tau, **kwargs)
+        super().__init__(pre, post, conn, tau=tau, g_max=g_max, **kwargs)
+        self.g_max = self.g_max / tau
         self.output_value = bm.Variable(bm.zeros(self.post.num))
 
     def update(self, tdi, pre_spike=None):

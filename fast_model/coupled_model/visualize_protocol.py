@@ -10,6 +10,21 @@ def moving_average(a, n, axis):
     return ret[n - 1:] / n
 
 
+def get_pos_from_tan(a, b):
+    pos = bm.arctan(a/b)
+    offset_mask = b < 0
+    pos = pos + offset_mask * bm.sign(a) * bm.pi
+    return pos
+
+def calculate_population_readout(activity, T):
+    size = activity.shape[1]
+    x = bm.linspace(-bm.pi, bm.pi, size)
+    ma = moving_average(activity, n=T, axis=0)  # average window: 1 ms
+    bump_activity = bm.vstack([bm.sum(ma * bm.cos(x[None, ]), axis=1), bm.sum(ma * bm.sin(x[None, ]), axis=1)])
+    readout = bm.array([[1., 0.]]) @ bump_activity
+    return readout
+
+
 def background_input_protocol(runner, net, E_inp):
     fig, gs = bp.visualize.get_figure(2, 1, 1.5, 10)
     # raster plot on E
@@ -208,32 +223,32 @@ def compare_current_input_protocol(runner, net, E_inp, duration, input_duration,
 
 
 def compare_noise_sensitivity_input_protocol(runner, net, E_inp, duration):
-    fig, gs = bp.visualize.get_figure(3, 1, 2, 8)
-    # raster plot on E
-    fig.add_subplot(gs[:1, 0])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.5)
-    # plot a section of input
-    fig.add_subplot(gs[1:2, 0])
-    bp.visualize.line_plot(bm.arange(net.size_E), E_inp[int(duration * 0.8) * 100,], legend='input')
-    plt.legend()
-    # calculate mean squared error
-    fig.add_subplot(gs[2:3, 0])
-    T = 1000  # average window: 10 ms
+    # fig, gs = bp.visualize.get_figure(3, 1, 2, 8)
+    # # raster plot on E
+    # fig.add_subplot(gs[:1, 0])
+    # bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.5)
+    # # plot a section of input
+    # fig.add_subplot(gs[1:2, 0])
+    # bp.visualize.line_plot(bm.arange(net.size_E), E_inp[int(duration * 0.8) * 100,], legend='input')
+    # plt.legend()
+    # # calculate mean squared error
+    # fig.add_subplot(gs[2:3, 0])
+    T = 100  # average window: 10 ms
     x = bm.linspace(-bm.pi, bm.pi, net.size_E)
     ts = moving_average(runner.mon.ts, n=T, axis=0)
     ma = moving_average(runner.mon['E.spike'], n=T, axis=0)
     bump_activity = bm.vstack([bm.sum(ma * bm.cos(x[None,]), axis=1), bm.sum(ma * bm.sin(x[None,]), axis=1)])
     readout = bm.arctan(bump_activity[1] / bump_activity[0])
-    plt.plot(ts, readout, marker='.', markersize=2., linestyle='None', alpha=0.5)
-    plt.ylim([-bm.pi/2, bm.pi/2])
+    # plt.plot(ts, readout, marker='.', markersize=2., linestyle='None', alpha=0.2)
+    # plt.ylim([-bm.pi/2, bm.pi/2])
     mse = bm.nanmean((readout[100000:] - 0.) ** 2)
-    print("Decoding MSE:", mse)
+    print("Fast CANN + E/I balance decoding MSE:", mse)
     # calculate mean firing rate
-    center_fr = bm.mean(runner.mon['E.spike'][:,int(net.size_E/2)-10:int(net.size_E/2)+10])
-    peripheral_fr = bm.mean(runner.mon['E.spike'][:,int(net.size_E*0.1)-10:int(net.size_E*0.1)+10])
-    print(f"center firing rate {center_fr:.6f}")
-    print(f"peripheral firing rate {peripheral_fr:.6f}")
-    # plt.show()
+    # center_fr = bm.mean(runner.mon['E.spike'][:,int(net.size_E/2)-10:int(net.size_E/2)+10])
+    # peripheral_fr = bm.mean(runner.mon['E.spike'][:,int(net.size_E*0.1)-10:int(net.size_E*0.1)+10])
+    # print(f"center firing rate {center_fr:.6f}")
+    # print(f"peripheral firing rate {peripheral_fr:.6f}")
+    plt.show()
 
 
 vis_setup = {

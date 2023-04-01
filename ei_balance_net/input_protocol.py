@@ -12,10 +12,10 @@ def sin_input_protocol(amplitude, frequency=50., duration=500., dt=0.01):
 
     return E_inputs, I_inputs, duration
 
-def linear_input_protocol(start_amp, end_amp, duration=150., dt=0.01):
-    st_amp = bp.inputs.section_input(values=[[start_amp]], durations=[50.], dt=dt)
-    ramp_amp = bp.inputs.ramp_input(c_start=start_amp, c_end=end_amp, duration=50., dt=dt)
-    hold_amp = bp.inputs.section_input(values=[[end_amp]], durations=[duration-100.], dt=dt)
+def linear_input_protocol(start_amp, end_amp, duration=135., dt=0.01):
+    st_amp = bp.inputs.section_input(values=[[start_amp]], durations=[84.], dt=dt)
+    ramp_amp = bp.inputs.ramp_input(c_start=start_amp, c_end=end_amp, duration=11., dt=dt)
+    hold_amp = bp.inputs.section_input(values=[[end_amp]], durations=[duration-95.], dt=dt)
     inputs = bm.concatenate([st_amp, ramp_amp[:, None], hold_amp], axis=0)
     E_inputs, I_inputs = inputs, inputs
 
@@ -87,7 +87,8 @@ def staircase_powerspec_input_protocol(amplitude, dt):
 
 input_setup = {
     "sin_input": sin_input_protocol(amplitude=1.0, frequency=10., duration=500., dt=global_dt),
-    "linear_input": linear_input_protocol(start_amp=1.0, end_amp=4., duration=150., dt=global_dt),
+    "linear_input": linear_input_protocol(start_amp=1.0, end_amp=2., duration=150., dt=global_dt),
+    "linear_input_save": linear_input_protocol(start_amp=1.0, end_amp=2., duration=150., dt=global_dt),
     "constant_input": constant_input_protocol(amplitude=1.0, duration=100., dt=global_dt),
     "localized_input": localized_input_protocol(amplitude=5.0, duration=3000., dt=global_dt),
     "staircase_input": staircase_input_protocol(amplitude=1.0, dt=global_dt),

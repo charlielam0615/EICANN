@@ -4,6 +4,8 @@ from functools import partial
 
 
 global_dt = 0.01
+n_size = 1
+size_E, size_I, stim_a = int(800 * n_size), int(100*n_size), 2*(bm.pi/6)**2
 
 
 def generate_bump_stimulus(pos, size_n, stim_a):
@@ -242,7 +244,6 @@ def compare_current_input_protocol(amplitude, duration, dt=global_dt):
 
 
 def compare_noise_sensitivity_input_protocol(signal_amplitude, noise_amplitude, noise_cv, duration, dt):
-    size_E, size_I, stim_a = 750, 250, bm.pi / 6
     bg_str = noise_amplitude
     stimulus_amp = bp.inputs.section_input(values=[[signal_amplitude-bg_str]], durations=[duration], dt=global_dt)
     stimulus_T = stimulus_amp.shape[0]
@@ -267,5 +268,5 @@ input_setup = {
     "tracking_input": partial(tracking_input_protocol, amplitude=1.0, duration=3000, n_period=10, dt=global_dt),
     "compare_speed_input": partial(compare_speed_input_protocol, amplitude=1.0, duration=3000., dt=global_dt),
     "compare_current_input": partial(compare_current_input_protocol, amplitude=1.0, duration=3000., dt=global_dt),
-    "compare_noise_sensitivity_input": partial(compare_noise_sensitivity_input_protocol, signal_amplitude=1.0, noise_amplitude=0.2, noise_cv=1.0, duration=3000., dt=global_dt),
+    "compare_noise_sensitivity_input": partial(compare_noise_sensitivity_input_protocol, signal_amplitude=1.0, noise_amplitude=0.1, noise_cv=1.0, duration=2000., dt=global_dt),
 }

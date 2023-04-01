@@ -87,14 +87,14 @@ class EICANN(bp.dyn.Network):
         w = lambda size_pre, size_post, prob: self.make_gauss_conn(size_pre, size_post, prob)
         r = lambda size_pre, size_post, prob: self.make_rand_conn(size_pre, size_post, prob)
         rv = lambda size_pre, size_post, prob, mean: \
-            self.make_rand_conn_with_variance(size_pre, size_post, prob, mean, 0.01)
+            self.make_rand_conn_with_variance(size_pre, size_post, prob, mean, 0.1)
 
         E2E_fw, E2I_fw, I2I_fw, I2E_fw = rv(size_E, size_E, prob, JEE), rv(size_E, size_Id, prob, JEI), \
                                          rv(size_Id, size_Id, prob, JII), rv(size_Id, size_E, prob, JIE)
 
         # ======== EI balance =====
         # weights from gaussian distribution
-        # g_from_dist = lambda m: bp.init.Normal(mean=m, scale=0.01*bm.abs(m))
+        # g_from_dist = lambda m: bp.init.Normal(mean=m, scale=0.1*bm.abs(m))
         # self.E2E_f = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.conn.FixedProb(prob), tau=tau_Ef, g_max=g_from_dist(JEE))
         # self.E2I_f = UnitExpCUBA(pre=self.E, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_Ef, g_max=g_from_dist(JEI))
         # self.I2I_f = UnitExpCUBA(pre=self.Id, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_If, g_max=g_from_dist(JII))
@@ -128,6 +128,9 @@ class EICANN(bp.dyn.Network):
         print(f"|{E2E_sw.max():.5f} | {E2I_sw.max():.5f} | {I2I_sw.min():.5f}  | {I2E_sw.min():.5f}|")
         super(EICANN, self).__init__()
 
+        # self._plot_weight_distribution_broken_axis(ei_weight=E2E_fw, cann_weight=E2E_sw)
+        return
+
     @staticmethod
     def _plot_weight_distribution(ei_weight, cann_weight):
         import seaborn as sns
@@ -143,6 +146,47 @@ class EICANN(bp.dyn.Network):
                      hist_kws={'edgecolor': 'black'},
                      kde_kws={'fill': True, 'linewidth': 2})
         plt.legend(loc="upper left")
+        plt.show()
+
+    @staticmethod
+    def _plot_weight_distribution_broken_axis(ei_weight, cann_weight):
+        import seaborn as sns
+        f, (ax_top, ax_bottom) = plt.subplots(2, 1, sharex=True, gridspec_kw={'hspace': 0.1})
+        ei_w = ei_weight[ei_weight > 1e-5]
+        cann_w = cann_weight[cann_weight > 1e-5]
+
+        print(f"E/I : CANN = {bm.mean(ei_w)/bm.mean(cann_w):.4f}")
+
+        ax = sns.kdeplot(data=ei_w, label='E/I weights', fill=True, linewidth=2, bw_method=0.02, ax=ax_top,
+                         color='gray')
+        ax = sns.kdeplot(data=ei_w, label='E/I weights', fill=True, linewidth=2, bw_method=0.02, ax=ax_bottom,
+                         color='gray')
+        ax = sns.kdeplot(data=cann_w, label='CANN weights', fill=True, linewidth=2, bw_method=0.02, ax=ax_bottom,
+                         color='blue')
+        ax = sns.kdeplot(data=cann_w, label='CANN weights', fill=True, linewidth=2, bw_method=0.02, ax=ax_top,
+                         color='blue')
+
+        ax_bottom.set_ylim([0, 150])
+        ax_top.set_ylim(bottom=450)
+
+        sns.despine(ax=ax_top, top=False, bottom=True, left=False, right=False)
+        sns.despine(ax=ax_bottom, top=True, bottom=False, left=False, right=False)
+        ax_top.set_xticklabels([])
+
+        ax = ax_top
+        d = .015
+        kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
+        ax.plot((-d, +d), (-d, +d), **kwargs)
+
+        ax2 = ax_bottom
+        kwargs.update(transform=ax2.transAxes)
+        ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)
+
+        ax_top.legend()
+        ax_top.grid()
+        ax_bottom.grid()
+        ax_bottom.set_ylabel("")
+
         plt.show()
 
     def dist(self, d):

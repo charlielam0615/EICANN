@@ -1,7 +1,7 @@
 import brainpy as bp
 import brainpy.math as bm
 import matplotlib.pyplot as plt
-from model_v2 import EICANN
+from model import EICANN
 from input_protocol import input_setup
 from visualize_protocol import vis_setup
 
@@ -11,8 +11,8 @@ global_dt = 0.01
 
 # ==== Neuron parameters =====
 n_scale = 1
-size_E, size_Ip, size_Id, size_ff = int(750*n_scale), int(250*n_scale), int(250*n_scale), int(1000*n_scale)
-num = size_E + size_Ip
+size_E, size_Ip, size_Id, size_ff = int(800*n_scale), int(100*n_scale), int(100*n_scale), int(1000*n_scale)
+num = size_E + size_Ip + size_Id
 num_ff = num
 prob = 0.25
 tau_scale = 10
@@ -23,23 +23,23 @@ V_threshold = 1.
 gl = -0.15
 
 # ===== CANN Parameters =====
-cann_scale = 1.0
-tau_Es = 0.5 * tau_scale
+cann_scale = 1.0 * 0.8
+tau_Es = 15 * tau_scale
 tau_Is = 0.6 * tau_scale
-gEE = 113.85 * cann_scale / (size_E*1.0)
-gEIp = 15.8 * cann_scale / (size_E*prob)
-gIpE = -10.7 * cann_scale / (size_Ip*prob)
-gIpIp = -3.95 * cann_scale / (size_Ip*prob)
-shunting_k = 2.0
+gEE = 114. * cann_scale / (size_E*1.0)
+gEIp = 16. * cann_scale / (size_E*prob)
+gIpE = -11. * cann_scale / (size_Ip*prob)
+gIpIp = -4. * cann_scale / (size_Ip*prob)
+shunting_k = 1.0
 
 # ===== EI Balance Parameters ====
 tau_Ef = 0.5 * tau_scale
 tau_If = 0.6 * tau_scale
-ei_scale = 1.0 * 0.6
-jie = -8. * ei_scale
-jii = -6.4 * ei_scale
-jee = 4.12 * ei_scale
-jei = 8.3 * ei_scale
+ei_scale = 1.0
+jie = -4.8 * ei_scale
+jii = -3.8 * ei_scale
+jee = 2.5 * ei_scale
+jei = 5.0 * ei_scale
 JIE = jie / bm.sqrt(size_Id*prob)
 JII = jii / bm.sqrt(size_Id*prob)
 JEE = jee / bm.sqrt(size_E*prob)

@@ -68,8 +68,8 @@ class LIF(bp.dyn.NeuGroup):
 class CANN(bp.dyn.Network):
     def __init__(self, size_E, size_Ip, tau_E, tau_I, tau_Es, tau_Is, V_reset, V_threshold, prob,
                  gl, gEE, gEIp, gIpIp, gIpE, shunting_k):
-        self.conn_a = bm.sqrt(2 * bm.pi) * (bm.pi/6)
-        self.stim_a = bm.sqrt(2 * bm.pi) * (bm.pi/6)
+        self.conn_a = 2 * (bm.pi/6)**2
+        self.stim_a = 2 * (bm.pi/6)**2
         self.size_E, self.size_Ip = size_E, size_Ip
         self.shunting_k = shunting_k
         self.J = 1.
@@ -108,7 +108,7 @@ class CANN(bp.dyn.Network):
         x_left = bm.reshape(bm.linspace(-bm.pi, bm.pi, size_pre), (-1, 1))
         x_right = bm.reshape(bm.linspace(-bm.pi, bm.pi, size_post), (1, -1))
         d = self.dist(x_left - x_right)
-        w_ = self.J * bm.exp(-bm.pi * bm.square(d / self.conn_a))
+        w_ = self.J * bm.exp(-bm.square(d) / self.conn_a)
         # w = w_ / bm.sum(w_, axis=-1, keepdims=True)
         w = w_
         prob_mask = (bm.random.rand(size_pre, size_post)<prob).astype(bm.float32)
@@ -120,15 +120,3 @@ class CANN(bp.dyn.Network):
         w = const_conn(bm.random.rand(size_pre, size_post), prob).astype(bm.float32)
         return w
 
-    def get_stimulus_by_pos(self, pos, size_n):
-        x = bm.linspace(-bm.pi, bm.pi, size_n)
-        if bm.ndim(pos) == 2:
-            x = x[None, ]
-        I = self.A * bm.exp(-bm.pi * bm.square(self.dist(x - pos) / self.stim_a))
-        return I
-
-
-def moving_average(a, n, axis):
-    ret = bm.cumsum(a, axis=axis, dtype=bm.float32)
-    ret[n:] = ret[n:] - ret[:-n]
-    return ret[n - 1:] / n

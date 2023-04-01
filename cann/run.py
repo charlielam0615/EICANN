@@ -10,7 +10,7 @@ global_dt = 0.01
 
 # ==== Neuron parameters =====
 n_scale = 1
-size_E, size_Ip, size_ff = 750*n_scale, 250*n_scale, 1000*n_scale
+size_E, size_Ip = 800*n_scale, 100*n_scale
 num = size_E + size_Ip
 num_ff = num
 prob = 0.25
@@ -26,9 +26,8 @@ gl = -0.15
 # cann_scale = 1.0 * 1.5
 # tau_Es = 0.3 * tau_scale
 
-cann_scale = 1.0
+cann_scale = 0.8
 tau_Es = 15 * tau_scale
-
 tau_Is = 0.6 * tau_scale
 gEE = 114. * cann_scale / (size_E*1.0)
 gEIp = 16. * cann_scale / (size_E*prob)
@@ -36,7 +35,7 @@ gIpE = -11. * cann_scale / (size_Ip*prob)
 gIpIp = -4. * cann_scale / (size_Ip*prob)
 shunting_k = 1.0
 
-f_E = 0.03
+f_E = 0.1
 f_I = 0.
 mu = 1.0
 
@@ -60,11 +59,14 @@ def run(exp_id):
     runner = bp.DSRunner(net,
                          jit=True,
                          monitors=[
-                                   # 'Ip.V', 'E.V',
+                                   'Ip.V',
+                                   'E.V',
                                    'E.spike',
-                                   # 'Ip.spike',
-                                   # 'E2E_s.g', 'E2I_s.g',
-                                   # 'I2I_s.g', 'I2E_s.g',
+                                   'Ip.spike',
+                                   'E2E_s.g',
+                                   'E2I_s.g',
+                                   'I2I_s.g',
+                                   'I2E_s.g',
                                    ],
                          inputs=[('E.ext_input', E_inp, 'iter', '='),
                                  ('Ip.ext_input', I_inp, 'iter', '=')],
@@ -88,5 +90,4 @@ if __name__ == "__main__":
     # 'sudden_change_stimulus_converge': analyze converging speed
     # 'smooth_moving_stimulus_lag': compute the lag between stimulus and response
 
-    plt.style.use('ggplot')
-    run('compare_speed_input')
+    run('persistent_input')
