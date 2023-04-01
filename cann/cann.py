@@ -1,24 +1,7 @@
 import brainpy as bp
 import brainpy.math as bm
 import matplotlib.pyplot as plt
-from UnitExpCUBA import UnitExpCUBA
-from brainpy.dyn import TwoEndConn
-
-
-class Shunting(TwoEndConn):
-    def __init__(self, E2Esyn_s, I2Esyn_s, k, EGroup):
-        super().__init__(pre=E2Esyn_s.pre, post=I2Esyn_s.post, conn=None)
-        self.E2Esyn_s = E2Esyn_s
-        self.I2Esyn_s = I2Esyn_s
-        self.EGroup = EGroup
-        self.k = k
-        self.post = self.E2Esyn_s.post
-
-    def update(self, tdi):
-        t, dt = tdi.t, tdi.dt
-        E_inp = self.E2Esyn_s.output_value + self.EGroup.ext_input
-        I_inp = self.I2Esyn_s.output_value
-        self.post.input += self.k * E_inp * I_inp
+from synapse import UnitExpCUBA, Shunting
 
 
 class LIF(bp.dyn.NeuGroup):
