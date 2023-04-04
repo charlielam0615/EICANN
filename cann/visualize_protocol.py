@@ -319,31 +319,33 @@ def compare_current_input_protocol(runner, net, E_inp, duration, input_duration,
 
 
 def compare_noise_sensitivity_input_protocol(runner, net, E_inp, duration):
-    # fig, gs = bp.visualize.get_figure(2, 2, 2, 4)
-    # # raster plot on E
-    # fig.add_subplot(gs[0, 0])
-    # bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.2)
-    # # plot a stimulus section
-    # fig.add_subplot(gs[0, 1])
-    # bp.visualize.line_plot(bm.arange(net.size_E), E_inp[int(duration * 0.8) * 100,])
-    # plt.xlabel('Neuron Index')
-    # plt.ylabel('Input Strength')
-    # # calculate mean squared error
-    # fig.add_subplot(gs[1, 0])
-    T = 100  # average window: 1 ms
+    fig, gs = bp.visualize.get_figure(2, 2, 2, 4)
+    # raster plot on E
+    fig.add_subplot(gs[0, 0])
+    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.2)
+    # plot a stimulus section
+    fig.add_subplot(gs[0, 1])
+    bp.visualize.line_plot(bm.arange(net.size_E), E_inp[int(duration * 0.8) * 100,])
+    plt.xlabel('Neuron Index')
+    plt.ylabel('Input Strength')
+    # calculate mean squared error
+    fig.add_subplot(gs[1, 0])
+
+    T = 1000  # average window: 10 ms
     x = bm.linspace(-bm.pi, bm.pi, net.size_E)
     ma = moving_average(runner.mon['E.spike'], n=T, axis=0)
     ts = moving_average(runner.mon.ts, n=T, axis=0)
     bump_activity = bm.vstack([bm.sum(ma * bm.cos(x[None,]), axis=1), bm.sum(ma * bm.sin(x[None,]), axis=1)])
     readout = get_pos_from_tan(bump_activity[1], bump_activity[0])
-    # plt.plot(ts, readout, marker='.', markersize=2., linestyle='None', alpha=0.5)
-    # plt.ylim([-bm.pi / 2, bm.pi / 2])
     mse = bm.nanmean((readout[100000:] - 0.) ** 2)
     print("Slow CANN Decoding MSE:", mse)
-    # plt.xlabel('Time (ms)')
-    # plt.ylabel('Population Vector Angle')
-    # # todo: subplot(1,1) for decoding error on different noise strength
-    # plt.tight_layout()
+
+    plt.plot(ts, readout, marker='.', markersize=2., linestyle='None', alpha=0.5)
+    plt.ylim([-bm.pi / 2, bm.pi / 2])
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Population Vector Angle')
+    # todo: subplot(1,1) for decoding error on different noise strength
+    plt.tight_layout()
 
 
 def sudden_change_stimulus(runner, net, E_inp, input_duration):

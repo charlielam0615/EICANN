@@ -38,7 +38,7 @@ class LIF(bp.dyn.NeuGroup):
         V = bm.where(refractory, self.V, V)
 
         # no leak current, use a lower bound on membrane potential
-        V = bm.where(V < -10, self.V, V)
+        V = bm.where(V < -1, self.V, V)
 
         spike = self.vth <= V
         self.spike.value = spike

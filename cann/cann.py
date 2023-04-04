@@ -36,10 +36,8 @@ class LIF(bp.dyn.NeuGroup):
         refractory = (_t - self.t_last_spike) <= self.tau_ref
         V = self.integral(self.V, _t, self.input, self.ext_input, dt=_dt)
         V = bm.where(refractory, self.V, V)
-
         # no leak current, use a lower bound on membrane potential
-        V = bm.where(V < -10, self.V, V)
-
+        V = bm.where(V < -5, self.V, V)
         spike = self.vth <= V
         self.spike.value = spike
         self.t_last_spike.value = bm.where(spike, _t, self.t_last_spike)
@@ -51,7 +49,7 @@ class LIF(bp.dyn.NeuGroup):
 class CANN(bp.dyn.Network):
     def __init__(self, size_E, size_Ip, tau_E, tau_I, tau_Es, tau_Is, V_reset, V_threshold, prob,
                  gl, gEE, gEIp, gIpIp, gIpE, shunting_k):
-        self.conn_a = 2 * (bm.pi/6)**2
+        self.conn_a = 2 * (bm.pi/10)**2
         self.stim_a = 2 * (bm.pi/6)**2
         self.size_E, self.size_Ip = size_E, size_Ip
         self.shunting_k = shunting_k
@@ -59,21 +57,20 @@ class CANN(bp.dyn.Network):
         self.A = 1.
 
         w = lambda size_pre, size_post, p: self.make_gauss_conn(size_pre, size_post, p)
+        r = lambda size_pre, size_post, p: self.make_rand_conn(size_pre, size_post, p)
 
         # neurons
-        self.E = LIF(size_E, tau=tau_E, gl=gl, vth=V_threshold, vreset=V_reset, tau_ref=0)
-        self.Ip = LIF(size_Ip, tau=tau_I, gl=gl, vth=V_threshold, vreset=V_reset, tau_ref=0)
-        E, Ip = self.E, self.Ip
+        self.E = LIF(size_E, tau=tau_E, gl=gl, vth=V_threshold, vreset=V_reset, tau_ref=5)
+        self.Ip = LIF(size_Ip, tau=tau_I, gl=gl, vth=V_threshold, vreset=V_reset, tau_ref=5)
 
         # CANN synapse
-        r = lambda size_pre, size_post, p: self.make_rand_conn(size_pre, size_post, p)
         E2E_sw, E2I_sw, I2I_sw, I2E_sw = gEE*w(size_E, size_E, 1.0), gEIp*r(size_E, size_Ip, prob), \
                                          gIpIp*r(size_Ip, size_Ip, prob), gIpE*r(size_Ip, size_E, prob)
 
-        self.E2E_s = UnitExpCUBA(pre=E, post=E, conn=bp.connect.All2All(), tau=tau_Es, g_max=E2E_sw)
-        self.E2I_s = UnitExpCUBA(pre=E, post=Ip, conn=bp.conn.FixedProb(prob), tau=tau_Es, g_max=gEIp)
-        self.I2I_s = UnitExpCUBA(pre=Ip, post=Ip, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIpIp)
-        self.I2E_s = UnitExpCUBA(pre=Ip, post=E, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIpE)
+        self.E2E_s = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.connect.All2All(), tau=tau_Es, g_max=E2E_sw)
+        self.E2I_s = UnitExpCUBA(pre=self.E, post=self.Ip, conn=bp.conn.FixedProb(prob), tau=tau_Es, g_max=gEIp)
+        self.I2I_s = UnitExpCUBA(pre=self.Ip, post=self.Ip, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIpIp)
+        self.I2E_s = UnitExpCUBA(pre=self.Ip, post=self.E, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIpE)
         self.ESI = Shunting(E2Esyn_s=self.E2E_s, I2Esyn_s=self.I2E_s, k=shunting_k, EGroup=self.E)
 
         print('[Weights]')

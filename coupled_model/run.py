@@ -13,7 +13,7 @@ global_dt = 0.01
 n_scale = 1
 size_E, size_Ip, size_Id, size_ff = int(800*n_scale), int(100*n_scale), int(100*n_scale), int(1000*n_scale)
 num = size_E + size_Ip + size_Id
-num_ff = num
+num_ff = size_E + size_Id
 prob = 0.25
 tau_scale = 10
 tau_E = 2 * tau_scale
@@ -23,7 +23,7 @@ V_threshold = 1.
 gl = -0.15
 
 # ===== CANN Parameters =====
-cann_scale = 1.0 * 0.8
+cann_scale = 0.8
 tau_Es = 15 * tau_scale
 tau_Is = 0.6 * tau_scale
 gEE = 114. * cann_scale / (size_E*1.0)
@@ -33,9 +33,9 @@ gIpIp = -4. * cann_scale / (size_Ip*prob)
 shunting_k = 1.0
 
 # ===== EI Balance Parameters ====
+ei_scale = 0.8
 tau_Ef = 0.5 * tau_scale
 tau_If = 0.6 * tau_scale
-ei_scale = 1.0
 jie = -4.8 * ei_scale
 jii = -3.8 * ei_scale
 jee = 2.5 * ei_scale
@@ -99,6 +99,7 @@ if __name__ == "__main__":
     # 'persistent_input': persistent input for bump holding task
     # 'check_balance_input: check balance condition in Ip using bump input
     # 'check_balance_flat_input: check balance condition in Ip using flat input
+    # 'check_irregular_flat_input': check whether the network activity is irregular
     # 'noisy_input': persistent input for bump holding task
     # 'global_inhibition': input with two bumps for global inhibition test
     # 'tracking_input': tracks a moving input
@@ -108,6 +109,4 @@ if __name__ == "__main__":
     # 'sudden_change_stimulus_converge': analyze converging speed
     # 'smooth_moving_stimulus_lag': compute the lag between stimulus and response
 
-    # plt.style.use('ggplot')
-    # print("criterion:", criterion)
-    run('smooth_moving_stimulus_lag')
+    run('persistent_input')

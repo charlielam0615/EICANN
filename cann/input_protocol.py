@@ -262,7 +262,7 @@ input_setup = {
     "compare_speed_input": partial(compare_speed_input_protocol, amplitude=1.0, duration=1500., dt=global_dt),
     "compare_current_input": partial(compare_current_input_protocol, amplitude=1.0, duration=3000., dt=global_dt),
     "compare_noise_sensitivity_input": partial(compare_noise_sensitivity_input_protocol, signal_amplitude=1.0,
-                                               noise_amplitude=0.1, noise_cv=1.0, duration=2000., dt=global_dt),
+                                               noise_amplitude=0.5, noise_cv=1.0, duration=2000., dt=global_dt),
     "sudden_change_stimulus_converge": partial(sudden_change_stimulus, amplitude=1.0, wait_dur=300., sti_dur=300.,
                                                dt=global_dt),
     "smooth_moving_stimulus_lag": partial(smooth_moving_stimulus, amplitude=1.0, duration=3000, n_period=2,
