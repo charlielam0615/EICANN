@@ -33,7 +33,7 @@ def persistent_input_protocol(amplitude, duration, n_scale=1, dt=global_dt):
     bg_str = amplitude * 0.1
     st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[399.], dt=global_dt)
     ramp_amp = bp.inputs.ramp_input(c_start=0, c_end=1 - bg_str, duration=1., dt=global_dt)
-    hold_amp = bp.inputs.section_input(values=[[1 - bg_str]], durations=[1000.], dt=global_dt)
+    hold_amp = bp.inputs.section_input(values=[[1 - bg_str]], durations=[600.], dt=global_dt)
     remove_amp = bp.inputs.section_input(values=[[bg_str]], durations=[duration-1400.], dt=global_dt)
 
     E_bump = generate_bump_stimulus(0., size_E, stim_a)
@@ -327,18 +327,23 @@ def smooth_moving_stimulus(amplitude, duration, n_period, dt):
     return E_inputs, I_inputs, duration
 
 
+def shut_off_with_excitation_protocol(amplitude, duration, dt):
+    return persistent_input_protocol(amplitude, duration, dt)
+
+
 input_setup = {
     "background_input": partial(background_input_protocol, amplitude=1.0, duration=2000., dt=global_dt),
-    "persistent_input": partial(persistent_input_protocol, amplitude=1.0, duration=2400., dt=global_dt),
+    "persistent_input": partial(persistent_input_protocol, amplitude=1.0, duration=1600., dt=global_dt),
     "check_balance_input": partial(check_balance_input_protocol, amplitude=3.0, duration=1200., dt=global_dt),
     "check_balance_flat_input": partial(check_balance_flat_input_protocol, amplitude=3.0, duration=1500., dt=global_dt),
     "check_irregular_flat_input": partial(check_irregular_flat_input_protocol, amplitude=1.0, duration=500., dt=global_dt),
     "noisy_input": partial(noisy_input_protocol, amplitude=1.0, duration=3000., dt=global_dt),
     "global_inhibition": partial(global_inhibition_protocol, amplitude=1.0, duration=4700.),
-    "tracking_input": partial(tracking_input_protocol, amplitude=1.0, duration=3000, n_period=10, dt=global_dt),
+    "tracking_input": partial(tracking_input_protocol, amplitude=1.0, duration=1000, n_period=3., dt=global_dt),
     "compare_speed_input": partial(compare_speed_input_protocol, amplitude=1.0, duration=1500., dt=global_dt),
     "compare_current_input": partial(compare_current_input_protocol, amplitude=1.0, duration=2000., dt=global_dt),
     "compare_noise_sensitivity_input": partial(compare_noise_sensitivity_input_protocol, signal_amplitude=1.0, noise_amplitude=0.5, noise_cv=1.0, duration=2000., dt=global_dt),
     "sudden_change_stimulus_converge": partial(sudden_change_stimulus, amplitude=1.0, wait_dur=300., sti_dur=300., dt=global_dt),
     "smooth_moving_stimulus_lag": partial(smooth_moving_stimulus, amplitude=1.0, duration=3000, n_period=2, dt=global_dt),
+    "shut_off_with_excitation": partial(shut_off_with_excitation_protocol, amplitude=1.0, duration=1600., dt=global_dt),
 }

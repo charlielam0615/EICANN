@@ -23,9 +23,9 @@ V_threshold = 1.
 gl = 0.
 
 # ===== EI Balance Parameters ====
-tau_Ef = 0.5 * tau_scale
+ei_scale = 0.8
+tau_Ef = 1.0 * tau_scale
 tau_If = 0.6 * tau_scale
-ei_scale = 1.2
 jie = -4.8 * ei_scale
 jii = -3.8 * ei_scale
 jee = 2.5 * ei_scale
@@ -78,4 +78,4 @@ if __name__ == '__main__':
     # 'staircase_input': staircase-like input
     # 'staircase_powerspec_input': staircase-like input for power spectrum analysis
 
-    run('linear_input_save')
+    run('linear_input')

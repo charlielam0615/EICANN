@@ -303,7 +303,7 @@ data_process(
 )
 
 if __name__ == "__main__":
-    fig, gs = bp.visualize.get_figure(1, 1, 2, 6)
+    fig, gs = bp.visualize.get_figure(1, 1, 1.5, 4)
     # subplot 1: raster E plot
     ax = fig.add_subplot(gs[0, 0])
     speed_keys = ['Fast', 'Slow']

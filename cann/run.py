@@ -16,20 +16,22 @@ num_ff = num
 prob = 0.25
 tau_scale = 10
 tau_E = 2 * tau_scale
-tau_I = 2 * tau_scale
+tau_I = 1.5 * tau_scale
 V_reset = 0.
 V_threshold = 1.
 gl = -0.15
 
 # ===== CANN Parameters =====
 # Turning-off-with-excitation
-# cann_scale = 1.0 * 1.5
-# tau_Es = 0.3 * tau_scale
+# cann_scale = 1.0
+# tau_Es = 0.35 * tau_scale
+# tau_Is = 1.0 * tau_scale
+# gEE = 190. * cann_scale / (size_E*1.0)
 
-cann_scale = 0.8
+cann_scale = 1.0
 tau_Es = 15 * tau_scale
-tau_Is = 0.6 * tau_scale
-gEE = 114. * cann_scale / (size_E*1.0)
+tau_Is = 1.0 * tau_scale
+gEE = 165. * cann_scale / (size_E*1.0)
 gEIp = 16. * cann_scale / (size_E*prob)
 gIpE = -11. * cann_scale / (size_Ip*prob)
 gIpIp = -4. * cann_scale / (size_Ip*prob)
@@ -89,5 +91,6 @@ if __name__ == "__main__":
     # 'compare_noise_sensitivity_input': compare bump sensitivity to noise
     # 'sudden_change_stimulus_converge': analyze converging speed
     # 'smooth_moving_stimulus_lag': compute the lag between stimulus and response
+    # 'turn_off_with_exicitation': turn off with excitation
 
-    run('persistent_input')
+    run('turn_off_with_exicitation')

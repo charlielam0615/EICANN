@@ -2,3 +2,7 @@
 *.npy
 __pychache__
 *.pyc
+.vscode
+.idea
+.pytest_cache
+obsolete_files

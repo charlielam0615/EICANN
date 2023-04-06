@@ -252,6 +252,33 @@ def smooth_moving_stimulus(amplitude, duration, n_period, dt):
     I_inputs = bump_str * generate_bump_stimulus(pos, size_I, stim_a) + bg_str
     return E_inputs, I_inputs, duration
 
+def turn_off_with_exicitation_protocol(amplitude, duration, dt):
+    bg_str = amplitude * 0.1
+    st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[399.], dt=global_dt)
+    ramp_amp = bp.inputs.ramp_input(c_start=0, c_end=1 - bg_str, duration=1., dt=global_dt)
+    hold_amp = bp.inputs.section_input(values=[[1 - bg_str]], durations=[1000.], dt=global_dt)
+    remove_amp = bp.inputs.section_input(values=[[0.]], durations=[duration-1400.], dt=global_dt)
+
+    E_bump = generate_bump_stimulus(0., size_E, stim_a)
+    I_bump = generate_bump_stimulus(0., size_I, stim_a)
+
+    E_inputs = bm.concatenate([
+        st_amp * bm.ones([1, size_E]),
+        ramp_amp[:, None] * E_bump[None, ] + bg_str*bm.ones([1, size_E]),
+        hold_amp * E_bump[None, ] + bg_str * bm.ones([1, size_E]),
+        remove_amp*bm.ones([1, size_E]),
+    ])
+
+    # shouldn't matter, because Ip has random connection
+    I_inputs = bm.concatenate([
+        st_amp * bm.ones([1, size_I]),
+        ramp_amp[:, None] * I_bump[None, ] + bg_str*bm.ones([1, size_I]),
+        hold_amp * I_bump[None, ] + bg_str * bm.ones([1, size_I]),
+        remove_amp*bm.ones([1, size_I]),
+    ])
+
+    return E_inputs, I_inputs, duration
+
 
 input_setup = {
     "background_input": partial(background_input_protocol, amplitude=1.0, duration=2000., dt=global_dt),
@@ -267,6 +294,7 @@ input_setup = {
                                                dt=global_dt),
     "smooth_moving_stimulus_lag": partial(smooth_moving_stimulus, amplitude=1.0, duration=3000, n_period=2,
                                           dt=global_dt),
+    "turn_off_with_exicitation": partial(turn_off_with_exicitation_protocol, amplitude=1.0, duration=2400., dt=global_dt),                                
 }
 
 

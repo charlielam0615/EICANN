@@ -17,24 +17,24 @@ num_ff = size_E + size_Id
 prob = 0.25
 tau_scale = 10
 tau_E = 2 * tau_scale
-tau_I = 2 * tau_scale
+tau_I = 1.5 * tau_scale
 V_reset = 0.
 V_threshold = 1.
 gl = -0.15
 
 # ===== CANN Parameters =====
 cann_scale = 0.8
-tau_Es = 15 * tau_scale
+tau_Es = 15. * tau_scale
 tau_Is = 0.6 * tau_scale
-gEE = 114. * cann_scale / (size_E*1.0)
+gEE = 165. * cann_scale / (size_E*1.0)
 gEIp = 16. * cann_scale / (size_E*prob)
 gIpE = -11. * cann_scale / (size_Ip*prob)
 gIpIp = -4. * cann_scale / (size_Ip*prob)
 shunting_k = 1.0
 
 # ===== EI Balance Parameters ====
-ei_scale = 0.8
-tau_Ef = 0.5 * tau_scale
+ei_scale = 1.5
+tau_Ef = 1.0 * tau_scale
 tau_If = 0.6 * tau_scale
 jie = -4.8 * ei_scale
 jii = -3.8 * ei_scale
@@ -108,5 +108,9 @@ if __name__ == "__main__":
     # 'compare_noise_sensitivity_input': compare bump sensitivity to noise
     # 'sudden_change_stimulus_converge': analyze converging speed
     # 'smooth_moving_stimulus_lag': compute the lag between stimulus and response
+    # 'shut_off_with_excitation': shut off the network with excitation
 
-    run('persistent_input')
+    import time
+    start = time.time()
+    run('check_irregular_flat_input')
+    print(f'Time cost: {time.time() - start:.2f}s')

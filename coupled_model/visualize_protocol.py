@@ -2,8 +2,11 @@ import brainpy as bp
 import brainpy.math as bm
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import signal
 from functools import partial
 
+
+global_dt = 0.01
 
 def moving_average(a, n, axis):
     ret = bm.cumsum(a, axis=axis, dtype=bm.float32)
@@ -26,6 +29,11 @@ def calculate_population_readout(activity, T):
     readout = bm.array([[1., 0.]]) @ bump_activity
     return readout
 
+def calculate_spike_center(activity, size):
+    x = bm.arange(size)
+    spike_center = bm.sum(activity * x[None, ], axis=1) / bm.sum(activity, axis=1)
+    return spike_center
+
 
 def background_input_protocol(runner, net, E_inp):
     fig, gs = bp.visualize.get_figure(2, 1, 1.5, 10)
@@ -39,37 +47,40 @@ def background_input_protocol(runner, net, E_inp):
 
 
 def persistent_input_protocol(runner, net, E_inp, duration, input_duration, neuron_indices):
-    fig, gs = bp.visualize.get_figure(2, 1, 1.5, 6)
+    fig, gs = bp.visualize.get_figure(2, 1, 1.5, 4.)
     # subplot 1: raster plot on E
-    axes = fig.add_subplot(gs[:1, 0])
+    ax1 = fig.add_subplot(gs[:1, 0])
     bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=[0, duration], markersize=1., alpha=0.3)
-    # plt.plot(input_duration, [int(net.size_E/2), int(net.size_E/2)], label='input peak', color='red')
-    plt.plot((input_duration[0], input_duration[0]), (0, net.size_E), color='gray', linestyle='--', linewidth=2.)
-    plt.plot((input_duration[1], input_duration[1]), (0, net.size_E), color='gray', linestyle='--', linewidth=2.)
-    plt.xlabel("")
-    plt.ylim([0, net.size_E])
-    axes.set_xticklabels([])
+    # plot onset and offset of the stimulus
+    ax1.plot((input_duration[0], input_duration[0]), (0, net.size_E), color='blue', linestyle='--', linewidth=2.)
+    ax1.plot((input_duration[1], input_duration[1]), (0, net.size_E), color='blue', linestyle='--', linewidth=2.)
+    ax1.set_xlabel("")
+    ax1.set_ylim([0, net.size_E])
+    ax1.set_xticklabels([])
 
     # subplot 2: readout plot
-    fig.add_subplot(gs[1:2, 0])
-    T = 100  # 1 ms
+    ax2 = fig.add_subplot(gs[1:2, 0])
+    T = 200  # 2 ms
     ts = moving_average(runner.mon.ts, n=T, axis=0)
     readout = calculate_population_readout(activity=runner.mon['E.spike'], T=T)
     fitted = moving_average(readout.T, n=T * 10, axis=0)
-    nm_readout = readout.T / bm.max(fitted)
-    fitted = fitted / bm.max(fitted)
-    plt.plot(ts, nm_readout, label='readout', alpha=0.5, color="gray")
-    plt.plot(ts[T * 10 - 1:], fitted, marker='.', markersize=2., linestyle='None', label='average', color="black")
-    plt.plot((input_duration[0], input_duration[0]), (bm.min(nm_readout), bm.max(nm_readout)),
-             color='gray', linestyle='--', linewidth=2.)
-    plt.plot((input_duration[1], input_duration[1]), (bm.min(nm_readout), bm.max(nm_readout)),
-             color='gray', linestyle='--', linewidth=2.)
-    plt.legend(loc='upper right')
-    plt.grid('on')
-    plt.xlim([0, duration])
-    plt.xlabel("Time (ms)")
-    plt.ylabel("Readout")
+    nm_readout = readout.T / bm.max(fitted) * 1.1
+    fitted = fitted / bm.max(fitted) * 1.1
+    ax2.plot(ts, nm_readout, label='readout', alpha=0.3, color="gray")
+    ax2.plot(ts[T * 10 - 1:], fitted, marker='.', markersize=2., linestyle='None', label='average', color="black")
+    # plot onset and offset of the stimulus
+    ax2.plot((input_duration[0], input_duration[0]), (bm.min(nm_readout), bm.max(nm_readout)),
+             color='blue', linestyle='--', linewidth=2.)
+    ax2.plot((input_duration[1], input_duration[1]), (bm.min(nm_readout), bm.max(nm_readout)),
+             color='blue', linestyle='--', linewidth=2.)
+    ax2.legend(loc='upper right')
+    ax2.grid('on')
+    ax2.set_xlim([0, duration])
+    ax2.set_xlabel("Time (ms)")
+    ax2.set_ylabel("Readout")
+    ax2.set_ylim([-0.2, 1.5])
 
+    fig.align_ylabels([ax1, ax2])
     plt.show()
 
 
@@ -149,7 +160,12 @@ def check_balance_flat_input_protocol(runner, net, E_inp, duration, input_durati
 
 
 def check_irregular_flat_input_protocol(runner, net, E_inp, duration, input_duration):
-    # calculate population average autocorrelation c.f. Vreeswijk and Somoplinsky (1998)
+    # subplot 1: raster plot
+    fig, gs = bp.visualize.get_figure(1, 4, 1.5, 1.5)
+    ax1 = fig.add_subplot(gs[0, 0:2])
+    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, duration), ylim=(0, net.size_E), markersize=1., alpha=0.2)
+
+    # # subplot 2: calculate population average autocorrelation c.f. Vreeswijk and Somoplinsky (1998)
     sample_n = 30  # sample pair number
     spiketr = runner.mon['E.spike'].T.astype(bm.float32)
     size_n, length = spiketr.shape
@@ -159,18 +175,24 @@ def check_irregular_flat_input_protocol(runner, net, E_inp, duration, input_dura
     for i in range(sample_n):
         autocorr += bm.correlate(X[i], X[i], mode='same')
     autocorr /= sample_n
+    ax2 = fig.add_subplot(gs[0, 2])
+    ax2.plot(runner.mon.ts-duration/2, autocorr, linewidth=2., alpha=0.8, color='k')
+    ax2.set_xlim(-duration/2, duration/2)
+    ax2.set_ylabel('Autocorr')
+    ax2.set_xlabel('Time (ms)')
+    ax2.grid()
 
-    fig, gs = bp.visualize.get_figure(1, 2, 2, 3)
-    ax = fig.add_subplot(gs[0, 0])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=(0, duration), ylim=(0, size_n), markersize=1., alpha=0.2)
+    # subplot 3: plot spectrogram of the neural activity
+    ax3 = fig.add_subplot(gs[0, 3])
+    fs = 1 / global_dt * 1000
+    data = np.sum(spiketr, axis=-1)
+    f, Pxx_den = signal.welch(data, fs)
+    ax3.semilogy(f, Pxx_den, color='black')
+    ax3.set_ylim([0.5e-3, 1e-2])
+    ax3.set_ylabel('PSD')
+    ax3.set_xlabel('Frequency [Hz]')
 
-    ax = fig.add_subplot(gs[0, 1])
-    ax.plot(runner.mon.ts-duration/2, autocorr, linewidth=2., alpha=0.8, color='k')
-    ax.set_xlim(-duration/2, duration/2)
-    ax.set_ylabel('Autocorrelation')
-    ax.set_xlabel('Time (ms)')
-    ax.grid()
-    plt.tight_layout()
+    # plt.tight_layout()
 
 
 def noisy_input_protocol(runner, net, E_inp, duration, input_duration):
@@ -223,17 +245,21 @@ def global_inhibition_protocol(runner, net, E_inp, small_bump_duration, large_bu
         bp.visualize.line_plot(runner.mon.ts, total_inp[:, neuron_index], legend='Total', alpha=0.5)
         plt.grid('on')
 
-    plt.show()
-
 
 def tracking_input_protocol(runner, net, E_inp, input_duration):
-    fig, gs = bp.visualize.get_figure(2, 1, 1.5, 10)
+    fig, gs = bp.visualize.get_figure(1, 1, 1.5, 2.5)
     # raster E plot
-    fig.add_subplot(gs[:2, 0])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1.)
-    plt.plot(bm.arange(input_duration[1]), bm.argmax(E_inp[::100], axis=1), label='input peak', color='red',
-             alpha=0.5, marker='.', markersize=1.5, linestyle='None')
-    plt.show()
+    ax1 = fig.add_subplot(gs[:1, 0])
+    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.5)
+    ax1.plot(bm.arange(input_duration[1]), bm.argmax(E_inp[::100], axis=1), label='input peak', color='blue',
+             alpha=1.0, marker='.', markersize=2.5, linestyle='None')
+    
+    T = 1000
+    activity = moving_average(runner.mon['E.spike'], n=T, axis=0)
+    spike_center = calculate_spike_center(activity, net.size_E)
+    ts = moving_average(runner.mon.ts, n=T, axis=-1)
+    ax1.plot(ts, spike_center, color='red', alpha=1.0, linewidth=1.5)
+    ax1.set_xlim([245, 455])
 
 
 def compare_speed_input_protocol(runner, net, E_inp, duration, input_duration):
@@ -436,19 +462,31 @@ def smooth_moving_stimulus(runner, net, E_inp, input_duration):
 
     return
 
+def shut_off_with_excitation(runner, net, E_inp, duration, input_duration):
+    fig, gs = bp.visualize.get_figure(1, 1, 1.5, 4.)
+    ax1 = fig.add_subplot(gs[:1, 0])
+    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=[0, duration], markersize=1., alpha=0.3)
+    # plot onset and offset of the stimulus
+    ax1.plot((input_duration[0], input_duration[0]), (0, net.size_E), color='blue', linestyle='--', linewidth=2.)
+    ax1.plot((input_duration[1], input_duration[1]), (0, net.size_E), color='blue', linestyle='--', linewidth=2.)
+    ax1.set_xlabel("")
+    ax1.set_ylim([0, net.size_E])
+    ax1.set_xticklabels([])
+
 
 vis_setup = {
     "background_input": partial(background_input_protocol,),
-    "persistent_input": partial(persistent_input_protocol, duration=2400., input_duration=(400, 1400), neuron_indices=(400, 50)),
+    "persistent_input": partial(persistent_input_protocol, duration=1600., input_duration=(400, 1000), neuron_indices=(400, 50)),
     "check_balance_input": partial(check_balance_input_protocol, duration=1500., input_duration=(500, 1500), neuron_indices=[int(400*1), int(100*1)]),
     "check_balance_flat_input": partial(check_balance_flat_input_protocol, duration=1500., input_duration=(500, 1500), neuron_indices=[375, 125]),
     "check_irregular_flat_input": partial(check_irregular_flat_input_protocol, duration=500., input_duration=(0, 500)),
     "noisy_input": partial(noisy_input_protocol, duration=3000., input_duration=(500, 3000)),
     "global_inhibition": partial(global_inhibition_protocol, small_bump_duration=(500, 4200), large_bump_duration=(1700, 4200), neuron_indices=[187, 563]),
-    "tracking_input": partial(tracking_input_protocol, input_duration=(0, 3000)),
+    "tracking_input": partial(tracking_input_protocol, input_duration=(0, 1000)),
     "compare_speed_input": partial(compare_speed_input_protocol, duration=1500., input_duration=(500, 1500)),
     "compare_current_input": partial(compare_current_input_protocol, duration=3000., input_duration=(500, 3000), neuron_index=700),
     "compare_noise_sensitivity_input": partial(compare_noise_sensitivity_input_protocol, duration=3000.),
     "sudden_change_stimulus_converge": partial(sudden_change_stimulus, input_duration=(300, 300)),
     "smooth_moving_stimulus_lag": partial(smooth_moving_stimulus, input_duration=(0, 3000)),
+    "shut_off_with_excitation": partial(shut_off_with_excitation, duration=1600., input_duration=(400, 1000)),
 }
