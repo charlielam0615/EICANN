@@ -1,4 +1,5 @@
-import pdb
+import os, sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import brainpy as bp
 import brainpy.math as bm
@@ -6,40 +7,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from functools import partial
 
+from utils.vis_utils import (
+    calculate_population_readout, 
+    moving_average, 
+    get_pos_from_tan,
+    )
 
-def moving_average(a, n, axis):
-    ret = bm.cumsum(a, axis=axis, dtype=bm.float32)
-    ret[n:] = ret[n:] - ret[:-n]
-    return ret[n - 1:] / n
-
-
-def get_pos_from_tan(a, b):
-    pos = bm.arctan(a/b)
-    offset_mask = b < 0
-    pos = pos + offset_mask * bm.sign(a) * bm.pi
-    return pos
-
-def calculate_population_readout(activity, T):
-    size = activity.shape[1]
-    x = bm.linspace(-bm.pi, bm.pi, size)
-    ma = moving_average(activity, n=T, axis=0)  # average window: 1 ms
-    bump_activity = bm.vstack([bm.sum(ma * bm.cos(x[None, ]), axis=1), bm.sum(ma * bm.sin(x[None, ]), axis=1)])
-    readout = bm.array([[1., 0.]]) @ bump_activity
-    return readout
+import pdb
 
 
-def background_input_protocol(runner, net, E_inp):
-    fig, gs = bp.visualize.get_figure(2, 1, 1.5, 10)
-    # raster plot on E
-    fig.add_subplot(gs[:1, 0])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1.)
-    # raster plot on Ip
-    fig.add_subplot(gs[1:2, 0])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['Ip.spike'], markersize=1.)
-    return
-
-
-def persistent_input_protocol(runner, net, E_inp, duration, input_duration, neuron_indices):
+def persistent_protocol(runner, net, E_inp, duration, input_duration, neuron_indices):
     fig, gs = bp.visualize.get_figure(2, 1, 1.5, 6)
     # subplot 1: raster plot on E
     ax1 = fig.add_subplot(gs[:1, 0])
@@ -77,62 +54,7 @@ def persistent_input_protocol(runner, net, E_inp, duration, input_duration, neur
     plt.show()
 
 
-def noisy_input_protocol(runner, net, E_inp, duration, input_duration):
-    fig, gs = bp.visualize.get_figure(2, 1, 1.5, 8)
-    # raster plot on E
-    fig.add_subplot(gs[:1, 0])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.3)
-    plt.plot(input_duration, [int(net.size_E / 2), int(net.size_E / 2)], label='input peak', color='red')
-    # # raster plot on Ip
-    # fig.add_subplot(gs[1:2, 0])
-    # bp.visualize.raster_plot(runner.mon.ts, runner.mon['Ip.spike'], markersize=1.)
-    # # imshow input
-    # fig.add_subplot(gs[2:3, 0])
-    # plt.imshow(E_inp.T, aspect='auto')
-    # input section
-    fig.add_subplot(gs[1:2, 0])
-    bp.visualize.line_plot(bm.arange(net.size_E), E_inp[int(duration*0.8)*100, ], legend='input')
-    plt.legend()
-    # imshow E spike
-    # fig.add_subplot(gs[4:5, 0])
-    # plt.imshow(runner.mon['E.spike'].T, aspect='auto')
-    plt.show()
-
-
-def global_inhibition_protocol(runner, net, E_inp, small_bump_duration, large_bump_duration, neuron_indices):
-    fig, gs = bp.visualize.get_figure(1, 1, 2, 8)
-    # raster plot on E
-    fig.add_subplot(gs[:1, 0])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.5)
-    plt.plot(small_bump_duration, [int(net.size_E / 4), int(net.size_E / 4)], label='input peak', color='red',
-             linewidth=1.0, alpha=0.8)
-    plt.plot(large_bump_duration, [int(net.size_E * 3 / 4), int(net.size_E * 3 / 4)], label='input peak',
-             color='red', linewidth=2.0, alpha=0.8)
-
-    # # raster plot on Ip
-    # fig.add_subplot(gs[1:2, 0])
-    # bp.visualize.raster_plot(runner.mon.ts, runner.mon['Ip.spike'], markersize=1.)
-
-    # # current plot for two Es
-    # for i in range(2):
-    #     fig.add_subplot(gs[2 + i:3 + i, 0])
-    #     neuron_index = neuron_indices[i]
-    #     Ec_inp = runner.mon['E2E_s.g']
-    #     Fc_inp = E_inp
-    #     shunting_inp = net.shunting_k * (runner.mon['E2E_s.g'] + Fc_inp) * runner.mon['I2E_s.g']
-    #     Ic_inp = runner.mon['I2E_s.g']
-    #     total_inp = Ec_inp + Ic_inp + Fc_inp + shunting_inp
-    #     bp.visualize.line_plot(runner.mon.ts, (Ec_inp)[:, neuron_index], legend='rec_E', alpha=0.5)
-    #     bp.visualize.line_plot(runner.mon.ts, (Fc_inp)[:, neuron_index], legend='F', alpha=0.5)
-    #     bp.visualize.line_plot(runner.mon.ts, Ic_inp[:, neuron_index], legend='I', alpha=0.5)
-    #     bp.visualize.line_plot(runner.mon.ts, shunting_inp[:, neuron_index], legend='shunting_inp', alpha=0.5)
-    #     bp.visualize.line_plot(runner.mon.ts, total_inp[:, neuron_index], legend='Total', alpha=0.5)
-    #     plt.grid('on')
-
-    plt.show()
-
-
-def tracking_input_protocol(runner, net, E_inp, input_duration):
+def tracking_protocol(runner, net, E_inp, duration, input_duration):
     fig, gs = bp.visualize.get_figure(2, 6, 1.7, 1)
     # subplot 1: raster E plot
     ax1 = fig.add_subplot(gs[0, 0:5])
@@ -194,29 +116,10 @@ def tracking_input_protocol(runner, net, E_inp, input_duration):
     plt.xlabel("Time (ms)")
     plt.ylabel("Difference")
 
-
-    # # current plots for debug
-    # fig.add_subplot(gs[2:4, 0])
-    # neuron_index = 510
-    # Ec_inp = runner.mon['E2E_s.g']
-    # Fc_inp = E_inp
-    # shunting_inp = net.shunting_k * (runner.mon['E2E_s.g'] + Fc_inp) * runner.mon['I2E_s.g']
-    # Ic_inp = runner.mon['I2E_s.g']
-    # leak = net.E.gl * runner.mon['E.V']
-    # total_inp = Ec_inp + Ic_inp + Fc_inp + shunting_inp + leak
-    # bp.visualize.line_plot(runner.mon.ts, (Ec_inp)[:, neuron_index], legend='rec_E', alpha=0.5)
-    # bp.visualize.line_plot(runner.mon.ts, (Fc_inp)[:, neuron_index], legend='F', alpha=0.5)
-    # bp.visualize.line_plot(runner.mon.ts, Ic_inp[:, neuron_index], legend='I', alpha=0.5)
-    # bp.visualize.line_plot(runner.mon.ts, shunting_inp[:, neuron_index], legend='shunting_inp', alpha=0.5)
-    # bp.visualize.line_plot(runner.mon.ts, leak[:, neuron_index], legend='leak', alpha=0.5)
-    # bp.visualize.line_plot(runner.mon.ts, total_inp[:, neuron_index], legend='Total', alpha=0.5)
-    # plt.grid('on')
-
-
     plt.show()
 
 
-def compare_speed_input_protocol(runner, net, E_inp, duration, input_duration):
+def convergence_rate_population_readout_protocol(runner, net, E_inp, duration, input_duration):
     fig, gs = bp.visualize.get_figure(2, 1, 1.7, 4)
     # subplot 1: raster plot on E
     ax1 = fig.add_subplot(gs[:1, 0])
@@ -257,7 +160,7 @@ def compare_speed_input_protocol(runner, net, E_inp, duration, input_duration):
     plt.show()
 
 
-def compare_current_input_protocol(runner, net, E_inp, duration, input_duration, neuron_index):
+def convergence_rate_current_protocol(runner, net, E_inp, duration, input_duration, neuron_index):
     fig, gs = bp.visualize.get_figure(2, 1, 1.5, 5)
     # subplot 1: raster E plot
     ax = fig.add_subplot(gs[0, 0])
@@ -299,7 +202,7 @@ def compare_current_input_protocol(runner, net, E_inp, duration, input_duration,
     plt.show()
 
 
-def compare_noise_sensitivity_input_protocol(runner, net, E_inp, duration):
+def noise_sensitivity_protocol(runner, net, E_inp, duration, input_duration):
     fig, gs = bp.visualize.get_figure(2, 2, 2, 4)
     # raster plot on E
     fig.add_subplot(gs[0, 0])
@@ -329,7 +232,7 @@ def compare_noise_sensitivity_input_protocol(runner, net, E_inp, duration):
     plt.tight_layout()
 
 
-def sudden_change_stimulus(runner, net, E_inp, input_duration):
+def sudden_change_convergence_protocol(runner, net, E_inp, duration, input_duration):
     # fig, gs = bp.visualize.get_figure(2, 1, 1.5, 8)
     # # raster plot on E
     # fig.add_subplot(gs[:1, 0])
@@ -359,7 +262,7 @@ def sudden_change_stimulus(runner, net, E_inp, input_duration):
     return
 
 
-def smooth_moving_stimulus(runner, net, E_inp, input_duration):
+def smooth_moving_lag_protocol(runner, net, E_inp, duration, input_duration):
     # fig, gs = bp.visualize.get_figure(3, 1, 1.5, 10)
     # # raster plot on E
     # fig.add_subplot(gs[0, 0])
@@ -411,15 +314,12 @@ def turn_off_with_excitation_protocol(runner, net, E_inp, duration, input_durati
 
 
 vis_setup = {
-    "background_input": partial(background_input_protocol,),
-    "persistent_input": partial(persistent_input_protocol, duration=2400., input_duration=(400, 1400), neuron_indices=(400, 50)),
-    "noisy_input": partial(noisy_input_protocol, duration=3000., input_duration=(500, 3000)),
-    "global_inhibition": partial(global_inhibition_protocol, small_bump_duration=(500, 2700), large_bump_duration=(1600, 2700), neuron_indices=[187, 563]),
-    "tracking_input": partial(tracking_input_protocol, input_duration=(0, 1500)),
-    "compare_speed_input": partial(compare_speed_input_protocol, duration=1500., input_duration=(500, 1500)),
-    "compare_current_input": partial(compare_current_input_protocol, duration=3000., input_duration=(1000, 3000), neuron_index=750),
-    "compare_noise_sensitivity_input": partial(compare_noise_sensitivity_input_protocol, duration=3000.),
-    "sudden_change_stimulus_converge": partial(sudden_change_stimulus, input_duration=(300, 300)),
-    "smooth_moving_stimulus_lag": partial(smooth_moving_stimulus, input_duration=(0, 3000)),
-    "turn_off_with_exicitation": partial(turn_off_with_excitation_protocol, duration=2400., input_duration=(400, 1400)),
+    "persistent_input": partial(persistent_protocol, neuron_indices=(400, 50)),
+    "tracking_input": partial(tracking_protocol),
+    "convergence_rate_population_readout_input": partial(convergence_rate_population_readout_protocol),
+    "convergence_rate_current_input": partial(convergence_rate_current_protocol, neuron_index=750),
+    "noise_sensitivity_input": partial(noise_sensitivity_protocol),
+    "sudden_change_convergence_input": partial(sudden_change_convergence_protocol),
+    "smooth_moving_lag_input": partial(smooth_moving_lag_protocol),
+    "turn_off_with_exicitation_input": partial(turn_off_with_excitation_protocol),
 }

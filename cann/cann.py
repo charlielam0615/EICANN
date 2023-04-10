@@ -47,12 +47,11 @@ class LIF(bp.dyn.NeuGroup):
 
 
 class CANN(bp.dyn.Network):
-    def __init__(self, size_E, size_Ip, tau_E, tau_I, tau_Es, tau_Is, V_reset, V_threshold, prob,
-                 gl, gEE, gEIp, gIpIp, gIpE, shunting_k):
-        self.conn_a = 2 * (bm.pi/10)**2
-        self.stim_a = 2 * (bm.pi/6)**2
-        self.size_E, self.size_Ip = size_E, size_Ip
-        self.shunting_k = shunting_k
+    def __init__(self, config):
+        self.conn_a = 2 * config.conn_a**2
+        self.stim_a = 2 * config.stim_a**2
+        self.size_E, self.size_Ip = config.size_E, config.size_Ip
+        self.shunting_k = config.shunting_k
         self.J = 1.
         self.A = 1.
 
@@ -60,18 +59,22 @@ class CANN(bp.dyn.Network):
         r = lambda size_pre, size_post, p: self.make_rand_conn(size_pre, size_post, p)
 
         # neurons
-        self.E = LIF(size_E, tau=tau_E, gl=gl, vth=V_threshold, vreset=V_reset, tau_ref=5)
-        self.Ip = LIF(size_Ip, tau=tau_I, gl=gl, vth=V_threshold, vreset=V_reset, tau_ref=5)
+        self.E = LIF(config.size_E, tau=config.tau_E, gl=config.gl, vth=config.V_threshold, 
+                     vreset=config.V_reset, tau_ref=5)
+        self.Ip = LIF(config.size_Ip, tau=config.tau_I, gl=config.gl, vth=config.V_threshold, 
+                      vreset=config.V_reset, tau_ref=5)
 
         # CANN synapse
-        E2E_sw, E2I_sw, I2I_sw, I2E_sw = gEE*w(size_E, size_E, 1.0), gEIp*r(size_E, size_Ip, prob), \
-                                         gIpIp*r(size_Ip, size_Ip, prob), gIpE*r(size_Ip, size_E, prob)
+        E2E_sw, E2I_sw, I2I_sw, I2E_sw = config.gEE*self.make_gauss_conn(config.size_E, config.size_E, 1.0), \
+                                         config.gEIp*self.make_rand_conn(config.size_E, config.size_Ip, config.prob), \
+                                         config.gIpIp*self.make_rand_conn(config.size_Ip, config.size_Ip, config.prob), \
+                                         config.gIpE*self.make_rand_conn(config.size_Ip, config.size_E, config.prob)
 
-        self.E2E_s = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.connect.All2All(), tau=tau_Es, g_max=E2E_sw)
-        self.E2I_s = UnitExpCUBA(pre=self.E, post=self.Ip, conn=bp.conn.FixedProb(prob), tau=tau_Es, g_max=gEIp)
-        self.I2I_s = UnitExpCUBA(pre=self.Ip, post=self.Ip, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIpIp)
-        self.I2E_s = UnitExpCUBA(pre=self.Ip, post=self.E, conn=bp.conn.FixedProb(prob), tau=tau_Is, g_max=gIpE)
-        self.ESI = Shunting(E2Esyn_s=self.E2E_s, I2Esyn_s=self.I2E_s, k=shunting_k, EGroup=self.E)
+        self.E2E_s = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.connect.All2All(), tau=config.tau_Es, g_max=E2E_sw)
+        self.E2I_s = UnitExpCUBA(pre=self.E, post=self.Ip, conn=bp.conn.FixedProb(config.prob), tau=config.tau_Es, g_max=config.gEIp)
+        self.I2I_s = UnitExpCUBA(pre=self.Ip, post=self.Ip, conn=bp.conn.FixedProb(config.prob), tau=config.tau_Is, g_max=config.gIpIp)
+        self.I2E_s = UnitExpCUBA(pre=self.Ip, post=self.E, conn=bp.conn.FixedProb(config.prob), tau=config.tau_Is, g_max=config.gIpE)
+        self.ESI = Shunting(E2Esyn_s=self.E2E_s, I2Esyn_s=self.I2E_s, k=config.shunting_k, EGroup=self.E)
 
         print('[Weights]')
         print("---------------- CANN -------------------")

@@ -3,6 +3,32 @@ import numpy as np
 from matplotlib import animation
 from matplotlib.gridspec import GridSpec
 from brainpy import math
+import brainpy.math as bm
+
+
+def moving_average(a, n, axis):
+    ret = bm.cumsum(a, axis=axis, dtype=bm.float32)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n
+
+def get_pos_from_tan(a, b):
+    pos = bm.arctan(a/b)
+    offset_mask = b < 0
+    pos = pos + offset_mask * bm.sign(a) * bm.pi
+    return pos
+
+def calculate_population_readout(activity, T):
+    size = activity.shape[1]
+    x = bm.linspace(-bm.pi, bm.pi, size)
+    ma = moving_average(activity, n=T, axis=0)  # average window: 1 ms
+    bump_activity = bm.vstack([bm.sum(ma * bm.cos(x[None, ]), axis=1), bm.sum(ma * bm.sin(x[None, ]), axis=1)])
+    readout = bm.array([[1., 0.]]) @ bump_activity
+    return readout
+
+def calculate_spike_center(activity, size):
+    x = bm.arange(size)
+    spike_center = bm.sum(activity * x[None, ], axis=1) / bm.sum(activity, axis=1)
+    return spike_center
 
 
 def animate_2D(values,
