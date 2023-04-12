@@ -11,6 +11,7 @@ from utils.vis_utils import (
     calculate_population_readout, 
     moving_average, 
     get_pos_from_tan,
+    plot_E_currents,
     )
 
 import pdb
@@ -161,42 +162,21 @@ def convergence_rate_population_readout_protocol(runner, net, E_inp, duration, i
 
 
 def convergence_rate_current_protocol(runner, net, E_inp, duration, input_duration, neuron_index):
-    fig, gs = bp.visualize.get_figure(2, 1, 1.5, 5)
-    # subplot 1: raster E plot
-    ax = fig.add_subplot(gs[0, 0])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.2)
-    ax.set_xlim([500, 2000])
-    ax.set_ylim([0, net.size_E])
-    ax.set_yticks([0, 400, 800])
+    fig, gs = bp.visualize.get_figure(2, 5, 1.8, 1)
 
-    # subplot 2: plot current on central E
-    ax1 = fig.add_subplot(gs[1, 0])
-    Ec_inp = runner.mon['E2E_s.g']
-    Fc_inp = E_inp
-    shunting_inp = net.shunting_k * (runner.mon['E2E_s.g'] + Fc_inp) * runner.mon['I2E_s.g']
-    leak = net.E.gl * runner.mon['E.V']
-    Ic_inp = runner.mon['I2E_s.g']
-    total_inp = Ec_inp + Ic_inp + Fc_inp + shunting_inp + leak
-    # smooth lines
-    T = 5000  # 50 ms
-    ts = moving_average(runner.mon.ts, n=T, axis=0)
-    total_E = moving_average((Fc_inp+Ec_inp)[:, neuron_index], n=T, axis=0)
-    total_I = moving_average((Ic_inp+shunting_inp+leak)[:, neuron_index], n=T, axis=0)
-    total = moving_average(total_inp[:, neuron_index], n=T, axis=0)
+    # subplot 1: plot current on central E
+    ax2 = fig.add_subplot(gs[0, 0:4])
+    plot_E_currents(runner, net, E_inp, neuron_index, ax2, 
+                    plot_items=['total_E', 'total_I', 'total'], 
+                    # plot_items=['Ec_s', 'Ic_s', 'Fc', 'shunting', 'leak', 'total'],
+                    smooth_T=2500)
 
-    # bp.visualize.line_plot(runner.mon.ts, (Fc_inp+Ec_inp)[:, neuron_index], legend='E', alpha=0.5)
-    # bp.visualize.line_plot(runner.mon.ts, (Ic_inp+shunting_inp+leak)[:, neuron_index], legend='I', alpha=0.5)
-    # bp.visualize.line_plot(runner.mon.ts, total_inp[:, neuron_index], legend='Total', alpha=1.0)
+    ax2.grid('on')
+    ax2.set_xlim([500, 2000])
+    ax2.set_ylabel("Current")
+    ax2.set_xlabel("Time (ms)")
 
-    ax1.plot(ts, total_E, label='E', color='blue', linewidth=2, linestyle='--')
-    ax1.plot(ts, total_I, label='I', color='gray', linewidth=2, linestyle='--')
-    ax1.plot(ts, total, label='Total', color='black', linewidth=2, linestyle='-')
-    ax1.set_ylabel(f"Neuron {neuron_index}")
-
-    plt.legend(loc='upper left')
-    ax1.grid('on')
-    plt.xlim([500, 2000])
-    plt.ylim([-1, 1])
+    # plt.legend()
 
     plt.tight_layout()
     plt.show()
@@ -313,13 +293,37 @@ def turn_off_with_excitation_protocol(runner, net, E_inp, duration, input_durati
     ax1.set_xlim([1100., 1500.])
 
 
+def debug_protocol(runner, net, E_inp, duration, input_duration, neuron_index):
+    fig, gs = bp.visualize.get_figure(2, 1, 2, 3)
+    # subplot 1: plot current using `plot_E_currents`
+    ax1 = fig.add_subplot(gs[0, 0])
+    currents = plot_E_currents(runner, net, E_inp, neuron_index, ax1,
+                               plot_items=['leak', 'Fc', 'total_rec'])
+    ax1.grid()
+    ax1.legend()
+    # subplot 2: plot currents directly using monitored values
+    ax2 = fig.add_subplot(gs[1, 0])
+    ax2.plot(runner.mon.ts, runner.mon['E._leak'][:, neuron_index], color='blue', 
+             linestyle='--', alpha=0.5, linewidth=1.0, label='leak')
+    ax2.plot(runner.mon.ts, runner.mon['E._ext'][:, neuron_index], color='red', 
+             linestyle='--', alpha=0.5, linewidth=1.0, label='Fc')
+    ax2.plot(runner.mon.ts, runner.mon['E._recinp'][:, neuron_index], color='green',
+             linestyle='-', alpha=1.0, linewidth=2.0, label='total_rec')
+    ax2.grid()
+    ax2.legend()
+
+    return
+
+
+
 vis_setup = {
     "persistent_input": partial(persistent_protocol, neuron_indices=(400, 50)),
     "tracking_input": partial(tracking_protocol),
     "convergence_rate_population_readout_input": partial(convergence_rate_population_readout_protocol),
-    "convergence_rate_current_input": partial(convergence_rate_current_protocol, neuron_index=750),
+    "convergence_rate_current_input": partial(convergence_rate_current_protocol, neuron_index=700),
     "noise_sensitivity_input": partial(noise_sensitivity_protocol),
     "sudden_change_convergence_input": partial(sudden_change_convergence_protocol),
     "smooth_moving_lag_input": partial(smooth_moving_lag_protocol),
     "turn_off_with_exicitation_input": partial(turn_off_with_excitation_protocol),
+    "debug_input": partial(debug_protocol, neuron_index=400),
 }

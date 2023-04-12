@@ -24,6 +24,11 @@ class LIF(bp.dyn.NeuGroup):
         self.spike = bm.Variable(bm.zeros(self.size, dtype=bool))
         self.ext_input = bm.Variable(bm.zeros(self.size))
 
+        # for debug purposes
+        # self._leak = bm.Variable(bm.zeros(self.size))
+        # self._recinp = bm.Variable(bm.zeros(self.size))
+        # self._ext = bm.Variable(bm.zeros(self.size))
+
         # integral
         self.integral = bp.odeint(f=self.derivative, method='euler')
 
@@ -43,7 +48,15 @@ class LIF(bp.dyn.NeuGroup):
         self.t_last_spike.value = bm.where(spike, _t, self.t_last_spike)
         self.V.value = bm.where(spike, self.vreset, V)
         self.refractory.value = bm.logical_or(refractory, spike)
+        
+        # for debug purposes
+        # self._leak.value = self.gl * self.V
+        # self._recinp.value = self.input
+        # self._ext.value = self.ext_input
+
+
         self.input[:] = 0.
+
 
 
 class CANN(bp.dyn.Network):
@@ -54,15 +67,16 @@ class CANN(bp.dyn.Network):
         self.shunting_k = config.shunting_k
         self.J = 1.
         self.A = 1.
+        self.name = "CANN"
 
         w = lambda size_pre, size_post, p: self.make_gauss_conn(size_pre, size_post, p)
         r = lambda size_pre, size_post, p: self.make_rand_conn(size_pre, size_post, p)
 
         # neurons
         self.E = LIF(config.size_E, tau=config.tau_E, gl=config.gl, vth=config.V_threshold, 
-                     vreset=config.V_reset, tau_ref=5)
+                     vreset=config.V_reset, tau_ref=5, name='E_Group')
         self.Ip = LIF(config.size_Ip, tau=config.tau_I, gl=config.gl, vth=config.V_threshold, 
-                      vreset=config.V_reset, tau_ref=5)
+                      vreset=config.V_reset, tau_ref=5, name='Ip_Group')
 
         # CANN synapse
         E2E_sw, E2I_sw, I2I_sw, I2E_sw = config.gEE*self.make_gauss_conn(config.size_E, config.size_E, 1.0), \

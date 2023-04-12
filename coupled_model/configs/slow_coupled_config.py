@@ -17,8 +17,8 @@ num = size_E + size_Ip + size_Id
 num_ff = size_E + size_Id
 prob = 0.25
 tau_scale = 10
-cann_scale = 0.8
-ei_scale = 1.5
+cann_scale = 1.0 * 1.25
+ei_scale = 1.5 * 2
 
 
 config = Config(
@@ -45,7 +45,7 @@ config = Config(
     cann_scale = cann_scale,
     tau_Es = 15 * tau_scale,
     tau_Is = 1.0 * tau_scale,
-    gEE = 165. * cann_scale / (size_E*1.0),
+    gEE = 185. * cann_scale / (size_E*1.0),
     gEIp = 16. * cann_scale / (size_E*prob),
     gIpE = -11. * cann_scale / (size_Ip*prob),
     gIpIp = -4. * cann_scale / (size_Ip*prob),

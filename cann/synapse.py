@@ -12,9 +12,9 @@ class UnitExpCUBA(Exponential):
     def update(self, tdi, pre_spike=None):
         super().update(tdi, pre_spike=pre_spike)
         self.output_value.value = self.g
-        self.post.input += self.g
         return 
     
+
 class Shunting(TwoEndConn):
     def __init__(self, E2Esyn_s, I2Esyn_s, k, EGroup):
         super().__init__(pre=E2Esyn_s.pre, post=I2Esyn_s.post, conn=None)

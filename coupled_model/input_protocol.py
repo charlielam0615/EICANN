@@ -25,7 +25,7 @@ stim_a = 2 * config.stim_a ** 2
 
 def persistent_protocol(amplitude, dt=global_dt):
     duration = 1600.
-    input_duration = [399., 1400.]
+    input_duration = [399., 1000.]
     hold_dur = input_duration[1] - input_duration[0] - 1
     bg_str = amplitude * 0.1
     st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[input_duration[0]], dt=dt)
@@ -282,6 +282,23 @@ def turn_off_with_exicitation_protocol(amplitude, dt=global_dt):
     return E_inputs, I_inputs, duration, input_duration
 
 
+def debug_input(amplitude, duration, dt):
+    input_duration = [0., duration]
+    bg_str = amplitude * 0.1
+    sti_amp = bp.inputs.section_input(values=[[amplitude-bg_str]], durations=[duration], dt=global_dt)
+    E_bump = generate_bump_stimulus(0., size_E, stim_a)
+    I_bump = generate_bump_stimulus(0., size_I, stim_a)
+
+    E_inputs = bm.concatenate([
+        sti_amp * E_bump[None, ] + bg_str*bm.ones([1, size_E]),
+    ])
+    I_inputs = bm.concatenate([
+        sti_amp * I_bump[None, ] + bg_str*bm.ones([1, size_I]),
+    ])
+    
+    return E_inputs, I_inputs, duration, input_duration
+
+
 input_setup = {
     "persistent_input": partial(persistent_protocol, amplitude=1.0, dt=global_dt),
     "balance_check_bump_input": partial(balance_check_bump_protocol, amplitude=3.0, dt=global_dt),
@@ -297,4 +314,5 @@ input_setup = {
                                                sti_dur=300., dt=global_dt),
     "smooth_moving_lag_input": partial(smooth_moving_lag_protocol, amplitude=1.0, n_period=2, dt=global_dt),
     "turn_off_with_exicitation_input": partial(turn_off_with_exicitation_protocol, amplitude=1.0, dt=global_dt),
+    "debug_input": partial(debug_input, amplitude=1.0, duration=20., dt=global_dt),
 }

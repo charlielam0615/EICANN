@@ -12,12 +12,12 @@ import brainpy.math as bm
 __all__ = ['config']
 
 n_scale = 1
-size_E, size_Ip = 800*n_scale, 100*n_scale
+size_E, size_Ip = int(800*n_scale), int(100*n_scale)
 num = size_E + size_Ip
 num_ff = num
 prob = 0.25
 tau_scale = 10
-cann_scale = 1.0
+cann_scale = 1.25
 
 config = Config(
     global_dt = 0.01,
@@ -42,7 +42,7 @@ config = Config(
     cann_scale = cann_scale,
     tau_Es = 15 * tau_scale,
     tau_Is = 1.0 * tau_scale,
-    gEE = 165. * cann_scale / (size_E*1.0),
+    gEE = 185. * cann_scale / (size_E*1.0),
     gEIp = 16. * cann_scale / (size_E*prob),
     gIpE = -11. * cann_scale / (size_Ip*prob),
     gIpIp = -4. * cann_scale / (size_Ip*prob),

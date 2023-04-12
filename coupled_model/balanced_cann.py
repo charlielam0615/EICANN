@@ -26,6 +26,11 @@ class LIF(bp.dyn.NeuGroup):
         self.spike = bm.Variable(bm.zeros(self.size, dtype=bool))
         self.ext_input = bm.Variable(bm.zeros(self.size))
 
+        # for debug purposes
+        # self._leak = bm.Variable(bm.zeros(self.size))
+        # self._recinp = bm.Variable(bm.zeros(self.size))
+        # self._ext = bm.Variable(bm.zeros(self.size))
+
         # integral
         self.integral = bp.odeint(f=self.derivative, method='euler')
 
@@ -45,6 +50,13 @@ class LIF(bp.dyn.NeuGroup):
         self.t_last_spike.value = bm.where(spike, _t, self.t_last_spike)
         self.V.value = bm.where(spike, self.vreset, V)
         self.refractory.value = bm.logical_or(refractory, spike)
+
+        # for debug purposes
+        # self._leak.value = self.gl * self.V
+        # self._recinp.value = self.input
+        # self._ext.value = self.ext_input
+
+
         self.input[:] = 0.
 
 
@@ -56,6 +68,7 @@ class EICANN(bp.dyn.Network):
         self.shunting_k =  config.shunting_k
         self.J = 1.
         self.A = 1.
+        self.name = 'EICANN'
 
         rv = lambda size_pre, size_post, p, mean: \
             self.make_rand_conn_with_variance(size_pre, size_post, p, mean, 0.1)

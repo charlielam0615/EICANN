@@ -14,6 +14,7 @@ from utils.vis_utils import (
     moving_average, 
     get_pos_from_tan,
     calculate_spike_center,
+    plot_E_currents,
     )
 
 
@@ -186,9 +187,9 @@ def tracking_protocol(runner, net, E_inp, duration, input_duration):
 
 
 def convergence_rate_population_readout_protocol(runner, net, E_inp, duration, input_duration):
-    fig, gs = bp.visualize.get_figure(2, 1, 1.7, 6)
+    fig, gs = bp.visualize.get_figure(3, 4, 1.7, 2)
     # raster plot on E
-    ax = fig.add_subplot(gs[:1, 0])
+    ax = fig.add_subplot(gs[:1, :3])
     bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.5)
     ax.plot(input_duration, [int(net.size_E / 2), int(net.size_E / 2)],
              label='input peak', color='white', linestyle='--', linewidth=1.5)
@@ -201,7 +202,7 @@ def convergence_rate_population_readout_protocol(runner, net, E_inp, duration, i
     ax.set_yticklabels([])
 
     # PPC readout normalized
-    ax = fig.add_subplot(gs[1:2, 0])
+    ax = fig.add_subplot(gs[1:2, :3])
     T = 100  # 1 ms
     ts = moving_average(runner.mon.ts, n=T, axis=0)
     neuron_index = int(net.size_E/2)
@@ -223,65 +224,24 @@ def convergence_rate_population_readout_protocol(runner, net, E_inp, duration, i
     ax.grid()
     # ax.set_ylabel("Readout")
 
-    plt.legend(loc='upper right', bbox_to_anchor=(1.4, 1.0), fancybox=True, shadow=True)
+    plt.legend(loc='center', bbox_to_anchor=(1.25, 1.0), fancybox=True, shadow=True)
     plt.tight_layout()
     plt.show()
 
 
 def convergence_rate_current_protocol(runner, net, E_inp, duration, input_duration, neuron_index):
-    fig, gs = bp.visualize.get_figure(2, 1, 2., 5)
-    # subplot 1: raster E plot
-    ax = fig.add_subplot(gs[0, 0])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.2)
-    ax.set_xlim([500, 2000])
-    ax.set_ylim([0, net.size_E])
-    ax.set_yticks([0, 400, 800])
+    fig, gs = bp.visualize.get_figure(2, 5, 1.8, 1)
+    # subplot 1: plot current on central E
+    ax2 = fig.add_subplot(gs[0, 0:4])
+    plot_E_currents(runner, net, E_inp, neuron_index, ax2, 
+                    plot_items=['total_E', 'total_I', 'total'], 
+                    # plot_items=['Ec_s', 'Ec_f', 'Ic_s', 'Ic_f', 'Fc', 'shunting'], 
+                    smooth_T=2500)
 
-    # subplot 2: plot current on central E
-    ax1 = fig.add_subplot(gs[1, 0])
-    E2E_s = runner.mon['E2E_s.g'][:, neuron_index]
-    E2E_f = runner.mon['E2E_f.g'][:, neuron_index]
-    I2E_s = runner.mon['I2E_s.g'][:, neuron_index]
-    I2E_f = runner.mon['I2E_f.g'][:, neuron_index]
-
-    Ec_inp = E2E_s + E2E_f
-    Fc_inp = E_inp[:, neuron_index]
-    shunting_inp = net.shunting_k * (E2E_s + E2E_f + Fc_inp) * I2E_s
-    leak = net.E.gl * runner.mon['E.V'][:, neuron_index]
-    Ic_inp = I2E_s + I2E_f
-    total_inp = Ec_inp + Ic_inp + Fc_inp + shunting_inp + leak
-    # smooth lines
-    T = 5000  # 50 ms
-    ts = moving_average(runner.mon.ts, n=T, axis=0)
-    total_E = moving_average((Fc_inp + Ec_inp), n=T, axis=0)
-    total_I = moving_average((Ic_inp + shunting_inp + leak), n=T, axis=0)
-    total = moving_average(total_inp, n=T, axis=0)
-
-    # ax1.plot(ts, total_E, label='E', color='blue', linewidth=2, linestyle='--')
-    # ax1.plot(ts, total_I, label='I', color='gray', linewidth=2, linestyle='--')
-    # ax1.plot(ts, total, label='Total', color='black', linewidth=2, linestyle='-')
-    # ax1.set_ylabel(f"Neuron {neuron_index}")
-
-
-    Ec_inp = moving_average(Ec_inp, n=T, axis=0)
-    Fc_inp = moving_average(Fc_inp, n=T, axis=0)
-    shunting_inp = moving_average(shunting_inp, n=T, axis=0)
-    leak = moving_average(leak, n=T, axis=0)
-    Ic_inp = moving_average(Ic_inp, n=T, axis=0)
-    total_inp = moving_average(total_inp, n=T, axis=0)
-    ax1.plot(ts, Ec_inp, label='Ec', color='blue', linewidth=1, linestyle='--')
-    ax1.plot(ts, Fc_inp, label='Fc', color='red', linewidth=1, linestyle='--')
-    ax1.plot(ts, shunting_inp, label='shunting', color='gray', linewidth=1, linestyle='--')
-    ax1.plot(ts, leak, label='leak', color='black', linewidth=1, linestyle='--')
-    ax1.plot(ts, Ic_inp, label='Ic', color='green', linewidth=1, linestyle='--')
-    ax1.plot(ts, total_inp, label='Total', color='black', linewidth=2, linestyle='-')
-
-
-
-    plt.legend(loc='upper left')
-    ax1.grid('on')
-    plt.xlim([500, 2000])
-    # plt.ylim([-2, 2])
+    ax2.grid('on')
+    ax2.set_xlim([500, 2000])
+    ax2.set_xlabel("Time (ms)")
+    ax2.legend(loc='center', bbox_to_anchor=(1.22, 0.5), fancybox=True, shadow=True)
 
     plt.tight_layout()
     plt.show()
@@ -385,6 +345,7 @@ def smooth_moving_lag_protocol(runner, net, E_inp, duration, input_duration):
 
     return
 
+
 def turn_off_with_exicitation_protocol(runner, net, E_inp, duration, input_duration):
     fig, gs = bp.visualize.get_figure(1, 1, 1.5, 4.)
     ax1 = fig.add_subplot(gs[:1, 0])
@@ -396,6 +357,27 @@ def turn_off_with_exicitation_protocol(runner, net, E_inp, duration, input_durat
     ax1.set_ylim([0, net.size_E])
     ax1.set_xticklabels([])
 
+
+def debug_protocol(runner, net, E_inp, duration, input_duration, neuron_index):
+    fig, gs = bp.visualize.get_figure(2, 1, 2, 3)
+    # subplot 1: plot current using `plot_E_currents`
+    ax1 = fig.add_subplot(gs[0, 0])
+    currents = plot_E_currents(runner, net, E_inp, neuron_index, ax1,
+                               plot_items=['leak', 'Fc', 'total_rec'])
+    ax1.grid()
+    ax1.legend()
+    # subplot 2: plot currents directly using monitored values
+    ax2 = fig.add_subplot(gs[1, 0])
+    ax2.plot(runner.mon.ts, runner.mon['E._leak'][:, neuron_index], color='blue', 
+             linestyle='--', alpha=0.5, linewidth=1.0, label='leak')
+    ax2.plot(runner.mon.ts, runner.mon['E._ext'][:, neuron_index], color='red', 
+             linestyle='--', alpha=0.5, linewidth=1.0, label='Fc')
+    ax2.plot(runner.mon.ts, runner.mon['E._recinp'][:, neuron_index], color='green',
+             linestyle='-', alpha=1.0, linewidth=2.0, label='total_rec')
+    ax2.grid()
+    ax2.legend()
+
+    return
 
 vis_setup = {
     "persistent_input": partial(persistent_protocol, neuron_indices=(400, 50)),
@@ -409,4 +391,5 @@ vis_setup = {
     "sudden_change_convergence_input": partial(sudden_change_convergence_protocol),
     "smooth_moving_lag_input": partial(smooth_moving_lag_protocol),
     "turn_off_with_exicitation_input": partial(turn_off_with_exicitation_protocol),
+    "debug_input": partial(debug_protocol, neuron_index=400),
 }

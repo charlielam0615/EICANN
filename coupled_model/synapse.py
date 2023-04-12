@@ -12,7 +12,6 @@ class UnitExpCUBA(Exponential):
     def update(self, tdi, pre_spike=None):
         super().update(tdi, pre_spike=pre_spike)
         self.output_value.value = self.g
-        self.post.input += self.g
         return 
     
 

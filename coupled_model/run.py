@@ -46,6 +46,11 @@ def run(exp_id):
                              # 'Ip.spike', 'Id.spike',
                              'E2E_s.g', 'E2E_f.g', 'E2I_s.g', 'E2I_f.g',
                              'I2I_s.g', 'I2I_f.g', 'I2E_s.g', 'I2E_f.g',
+
+                             # for debug purposes
+                            #  'E._leak',
+                            #  'E._recinp',
+                            #  'E._ext',
                          ],
                          inputs=[('E.ext_input', E_inp, 'iter', '='),
                                  ('Id.ext_input', I_inp, 'iter', '='),
@@ -59,19 +64,20 @@ def run(exp_id):
 
 if __name__ == "__main__":
     # Available protocols are:
-    # 'persistent_input': persistent input for bump holding task
+    # 'persistent_input': persistent input for bump holding task, requires "slow_coupled" config
     # 'balance_check_bump_input: check balance condition in Ip using bump input
     # 'balance_check_flat_input: check balance condition in Ip using flat input
-    # 'irregular_check_flat_input': check whether the network activity is irregular
-    # 'tracking_input': tracks a moving input
-    # 'convergence_rate_population_readout_input': population readout
-    # 'convergence_rate_current_input': plot current for convergence rate analysis
-    # 'noise_sensitivity_input': compare bump sensitivity to noise
-    # 'sudden_change_convergence_input': analyze converging speed and save results
-    # 'smooth_moving_lag_input': compute the lag between stimulus and response and save results
+    # 'irregular_check_flat_input': check whether the network activity is irregular, requires "slow_coupled" config
+    # 'tracking_input': tracks a moving input, requires "slow_coupled" config
+    # 'convergence_rate_population_readout_input': population readout, requires "slow_coupled" config
+    # 'convergence_rate_current_input': plot current for convergence rate analysis, requires "slow_coupled" config
+    # 'noise_sensitivity_input': compare bump sensitivity to noise, requires "slow_coupled" or "fast_coupled" config
+    # 'sudden_change_convergence_input': analyze converging speed and save results, requires "slow_coupled"
+    # 'smooth_moving_lag_input': compute the lag between stimulus and response and save results, requires "slow_coupled"
     # 'turn_off_with_exicitation_input': shut off the network with excitation
+    # 'debug_input': unit test for identity between input current calculation and monitoring
 
     import time
     start = time.time()
-    run('convergence_rate_population_readout_input')
+    run('convergence_rate_current_input')
     print(f'Time cost: {time.time() - start:.2f}s')

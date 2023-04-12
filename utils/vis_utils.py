@@ -31,6 +31,58 @@ def calculate_spike_center(activity, size):
     return spike_center
 
 
+def plot_E_currents(runner, net, E_inp, neuron_index, ax, plot_items=("total_E", "total_I", "total"), smooth_T=None):
+    currents = {}
+    leak = net.E.gl * runner.mon['E.V'][:, neuron_index]
+    Fc_inp = E_inp[:, neuron_index]
+    currents.update({"Fc": Fc_inp, "leak": leak})
+
+    Ec_inp = runner.mon['E2E_s.g'][:, neuron_index]
+    Ic_inp = runner.mon['I2E_s.g'][:, neuron_index]
+    currents.update({"Ec_s": runner.mon['E2E_s.g'][:, neuron_index], 
+                     "Ic_s": runner.mon['I2E_s.g'][:, neuron_index]})
+
+    if net.name.startswith("EICANN"):
+       Ec_inp = Ec_inp + runner.mon['E2E_f.g'][:, neuron_index]
+       Ic_inp = Ic_inp + runner.mon['I2E_f.g'][:, neuron_index]
+       currents.update({"Ec_f": runner.mon['E2E_f.g'][:, neuron_index],
+                        "Ic_f": runner.mon['I2E_f.g'][:, neuron_index]})
+    
+    shunting_inp = net.shunting_k * (Ec_inp + Fc_inp) * runner.mon['I2E_s.g'][:, neuron_index]
+    currents.update({"shunting": shunting_inp, "Ec": Ec_inp, "Ic": Ic_inp})
+
+    total_E = Ec_inp + Fc_inp
+    total_I = Ic_inp + shunting_inp + leak
+    total_rec = Ec_inp + Ic_inp + shunting_inp
+    total = total_E + total_I
+
+    currents.update({"total_E": total_E, "total_I": total_I, "total_rec": total_rec, "total": total})
+    
+    color_palette = ['blue', 'red', 'green', 'orange', 'purple', 'gray', 'pink', 
+                     'brown', 'yellow', 'cyan', 'magenta', 'olive', 'lime']
+
+    ts = runner.mon.ts if smooth_T is None else moving_average(runner.mon.ts, n=smooth_T, axis=0)
+
+    for i, item in enumerate(plot_items):
+        if smooth_T is not None:
+            currents[item] = moving_average(currents[item], n=smooth_T, axis=0)
+
+        # plot arguments
+        if item.startswith("total"):
+            alpha, linewidth, linestyle = 1.0, 2., '-'
+        else:
+            alpha, linewidth, linestyle = 0.5, 1., '--'
+
+        if item!= 'total':
+            ax.plot(ts, currents[item], linestyle=linestyle,
+                    label=item, alpha=alpha, linewidth=linewidth, color=color_palette[i])
+        else:
+            ax.plot(ts, currents['total'], linestyle=linestyle,
+                    label=item, alpha=alpha, linewidth=linewidth, color='black')
+
+    return {k:v for (k,v) in currents.items() if k in plot_items}
+
+
 def animate_2D(values,
                net_size,
                dt=None,
