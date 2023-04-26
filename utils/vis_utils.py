@@ -4,6 +4,8 @@ from matplotlib import animation
 from matplotlib.gridspec import GridSpec
 from brainpy import math
 import brainpy.math as bm
+from warnings import warn
+
 
 
 def moving_average(a, n, axis):
@@ -11,11 +13,14 @@ def moving_average(a, n, axis):
     ret[n:] = ret[n:] - ret[:-n]
     return ret[n - 1:] / n
 
+
 def get_pos_from_tan(a, b):
+    warn('`get_pos_from_tan` is deprecated', DeprecationWarning, stacklevel=2)
     pos = bm.arctan(a/b)
     offset_mask = b < 0
     pos = pos + offset_mask * bm.sign(a) * bm.pi
     return pos
+
 
 def calculate_population_readout(activity, T):
     size = activity.shape[1]
@@ -25,9 +30,18 @@ def calculate_population_readout(activity, T):
     readout = bm.array([[1., 0.]]) @ bump_activity
     return readout
 
-def calculate_spike_center(activity, size):
-    x = bm.arange(size)
-    spike_center = bm.sum(activity * x[None, ], axis=1) / bm.sum(activity, axis=1)
+
+def calculate_spike_center(activity, size, T=None, feature_range=None):
+    if T is not None:
+        activity = moving_average(activity, n=T, axis=0)
+
+    if feature_range is None:
+        x = bm.arange(size)
+        spike_center = bm.sum(activity * x[None, ], axis=1) / bm.sum(activity, axis=1)
+    else:
+        assert len(feature_range) == 2, "feature_range must be a tuple of two numbers."
+        features = bm.linspace(feature_range[0], feature_range[1], size)
+        spike_center = bm.sum(activity * features[None, ], axis=1) / bm.sum(activity, axis=1)
     return spike_center
 
 

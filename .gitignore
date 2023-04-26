@@ -5,4 +5,5 @@ __pychache__
 .vscode
 .idea
 .pytest_cache
+*.txt
 obsolete_files

@@ -70,8 +70,7 @@ class EICANN(bp.dyn.Network):
         self.A = 1.
         self.name = 'EICANN'
 
-        rv = lambda size_pre, size_post, p, mean: \
-            self.make_rand_conn_with_variance(size_pre, size_post, p, mean, 0.1)
+        _plot_weight_dist = False
 
         # neurons
         self.E = LIF(size=config.size_E, gl=config.gl, tau=config.tau_E, vth=config.V_threshold, 
@@ -83,29 +82,40 @@ class EICANN(bp.dyn.Network):
 
 
         # ======== EI balance =====
-        # E/I balance weights, not used. Merely used for printing weight information.
-        E2E_fw, E2I_fw, I2I_fw, I2E_fw = config.JEE*self.make_rand_conn(config.size_E, config.size_E, config.prob), \
-                                         config.JEI*self.make_rand_conn(config.size_E, config.size_Id, config.prob), \
-                                         config.JII*self.make_rand_conn(config.size_Id, config.size_Id, config.prob), \
-                                         config.JIE*self.make_rand_conn(config.size_Id, config.size_E, config.prob)
+        if not _plot_weight_dist:
+            # E/I balance weights, not used. Merely used for printing weight information.
+            E2E_fw, E2I_fw, I2I_fw, I2E_fw = config.JEE*self.make_rand_conn(config.size_E, config.size_E, config.prob), \
+                                            config.JEI*self.make_rand_conn(config.size_E, config.size_Id, config.prob), \
+                                            config.JII*self.make_rand_conn(config.size_Id, config.size_Id, config.prob), \
+                                            config.JIE*self.make_rand_conn(config.size_Id, config.size_E, config.prob)
+            # weights from delta distribution
+            self.E2E_f = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.conn.FixedProb(config.prob), 
+                                     tau=config.tau_Ef, g_max=config.JEE)
+            self.E2I_f = UnitExpCUBA(pre=self.E, post=self.Id, conn=bp.conn.FixedProb(config.prob), 
+                                     tau=config.tau_Ef, g_max=config.JEI)
+            self.I2I_f = UnitExpCUBA(pre=self.Id, post=self.Id, conn=bp.conn.FixedProb(config.prob), 
+                                     tau=config.tau_If, g_max=config.JII)
+            self.I2E_f = UnitExpCUBA(pre=self.Id, post=self.E, conn=bp.conn.FixedProb(config.prob), 
+                                     tau=config.tau_If, g_max=config.JIE)
+        else:
+            rv = lambda size_pre, size_post, p, mean: \
+                self.make_rand_conn_with_variance(size_pre, size_post, p, mean, 0.1)
+            E2E_fw, E2I_fw, I2I_fw, I2E_fw = rv(config.size_E, config.size_E, config.prob, config.JEE), \
+                                            rv(config.size_E, config.size_Id, config.prob, config.JEI), \
+                                            rv(config.size_Id, config.size_Id, config.prob, config.JII), \
+                                            rv(config.size_Id, config.size_E, config.prob, config.JIE)
+
+            # weights from gaussian distribution
+            g_from_dist = lambda m: bp.init.Normal(mean=m, scale=0.1*bm.abs(m))
+            self.E2E_f = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.conn.FixedProb(config.prob), 
+                                        tau=config.tau_Ef, g_max=g_from_dist(config.JEE))
+            self.E2I_f = UnitExpCUBA(pre=self.E, post=self.Id, conn=bp.conn.FixedProb(config.prob), 
+                                        tau=config.tau_Ef, g_max=g_from_dist(config.JEI))
+            self.I2I_f = UnitExpCUBA(pre=self.Id, post=self.Id, conn=bp.conn.FixedProb(config.prob), 
+                                        tau=config.tau_If, g_max=g_from_dist(config.JII))
+            self.I2E_f = UnitExpCUBA(pre=self.Id, post=self.E, conn=bp.conn.FixedProb(config.prob), 
+                                        tau=config.tau_If, g_max=g_from_dist(config.JIE))
         
-        # weights from gaussian distribution
-        # g_from_dist = lambda m: bp.init.Normal(mean=m, scale=0.1*bm.abs(m))
-        # self.E2E_f = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.conn.FixedProb(prob), tau=tau_Ef, g_max=g_from_dist(JEE))
-        # self.E2I_f = UnitExpCUBA(pre=self.E, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_Ef, g_max=g_from_dist(JEI))
-        # self.I2I_f = UnitExpCUBA(pre=self.Id, post=self.Id, conn=bp.conn.FixedProb(prob), tau=tau_If, g_max=g_from_dist(JII))
-        # self.I2E_f = UnitExpCUBA(pre=self.Id, post=self.E, conn=bp.conn.FixedProb(prob), tau=tau_If, g_max=g_from_dist(JIE))
-
-        # weights from delta distribution
-        self.E2E_f = UnitExpCUBA(pre=self.E, post=self.E, conn=bp.conn.FixedProb(config.prob), 
-                                 tau=config.tau_Ef, g_max=config.JEE)
-        self.E2I_f = UnitExpCUBA(pre=self.E, post=self.Id, conn=bp.conn.FixedProb(config.prob), 
-                                 tau=config.tau_Ef, g_max=config.JEI)
-        self.I2I_f = UnitExpCUBA(pre=self.Id, post=self.Id, conn=bp.conn.FixedProb(config.prob), 
-                                 tau=config.tau_If, g_max=config.JII)
-        self.I2E_f = UnitExpCUBA(pre=self.Id, post=self.E, conn=bp.conn.FixedProb(config.prob), 
-                                 tau=config.tau_If, g_max=config.JIE)
-
         # ======= CANN =====
         E2E_sw, E2I_sw, I2I_sw, I2E_sw = config.gEE * self.make_gauss_conn(config.size_E, config.size_E, 1.0), \
                                          config.gEIp * self.make_rand_conn(config.size_E, config.size_Ip, config.prob), \
@@ -134,7 +144,8 @@ class EICANN(bp.dyn.Network):
         print(f"|{E2E_sw.max():.5f} | {E2I_sw.max():.5f} | {I2I_sw.min():.5f}  | {I2E_sw.min():.5f}|")
         super(EICANN, self).__init__()
 
-        # self._plot_weight_distribution_broken_axis(ei_weight=E2E_fw, cann_weight=E2E_sw)
+        if _plot_weight_dist:
+            self._plot_weight_distribution(ei_weight=E2E_fw, cann_weight=E2E_sw)
         return
 
     @staticmethod
@@ -145,13 +156,13 @@ class EICANN(bp.dyn.Network):
 
         print(f"E/I : CANN = {bm.mean(ei_w)/bm.mean(cann_w):.4f}")
 
-        sns.distplot(ei_w, hist=False, kde=True, label='E/I weights',
+        sns.distplot(ei_w, hist=False, kde=True, label='E-INN weights',
                      hist_kws={'edgecolor': 'black'},
                      kde_kws={'fill': True, 'linewidth': 2})
         sns.distplot(cann_w, hist=False, kde=True, label='CANN weights',
                      hist_kws={'edgecolor': 'black'},
                      kde_kws={'fill': True, 'linewidth': 2})
-        plt.legend(loc="upper left")
+        plt.legend(loc="upper right", fontsize=12)
         plt.show()
 
     @staticmethod

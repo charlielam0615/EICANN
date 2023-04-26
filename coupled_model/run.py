@@ -7,10 +7,12 @@ from visualize_protocol import vis_setup
 
 from configs import (
     slow_coupled_config,
+    fast_coupled_config
     )
 
 config_and_name = {
         slow_coupled_config: "slow_coupled",
+        fast_coupled_config: "fast_coupled",
         }
 
 config_file = slow_coupled_config
@@ -79,5 +81,5 @@ if __name__ == "__main__":
 
     import time
     start = time.time()
-    run('convergence_rate_current_input')
+    run('noise_sensitivity_input')
     print(f'Time cost: {time.time() - start:.2f}s')

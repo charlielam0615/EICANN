@@ -1,5 +1,6 @@
 import os, sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import os.path as osp
 
 
 import brainpy as bp
@@ -247,34 +248,43 @@ def convergence_rate_current_protocol(runner, net, E_inp, duration, input_durati
     plt.show()
 
 
-def noise_sensitivity_protocol(runner, net, E_inp, duration, input_duration):
-    fig, gs = bp.visualize.get_figure(2, 2, 2, 4)
-    # raster plot on E
-    fig.add_subplot(gs[0, 0])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.2)
-    # plot a stimulus section
-    fig.add_subplot(gs[0, 1])
-    bp.visualize.line_plot(bm.arange(net.size_E), E_inp[int(duration * 0.8) * 100,])
-    plt.xlabel('Neuron Index')
-    plt.ylabel('Input Strength')
-    # calculate mean squared error
-    fig.add_subplot(gs[1, 0])
+def noise_sensitivity_protocol(runner, net, E_inp, duration, input_duration, save_mse, noise_level_str=None):
+    def calculate_mse():
+        T = 1000  # average window: 10 ms
+        ts = moving_average(runner.mon.ts, n=T, axis=0)
+        readout = calculate_spike_center(runner.mon['E.spike'], size=net.size_E, T=T, feature_range=[-bm.pi, bm.pi])
+        mse = bm.nanmean((readout[100000:] - 0.) ** 2)
+        return mse, ts, readout
+    
+    if not save_mse:
+        fig, gs = bp.visualize.get_figure(2, 2, 2, 4)
+        # raster plot on E
+        fig.add_subplot(gs[0, 0])
+        bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.2)
+        # plot a stimulus section
+        fig.add_subplot(gs[0, 1])
+        bp.visualize.line_plot(bm.arange(net.size_E), E_inp[int(duration * 0.8) * 100,])
+        plt.xlabel('Neuron Index')
+        plt.ylabel('Input Strength')
+        # calculate mean squared error
+        fig.add_subplot(gs[1, 0])
+        mse, ts, readout = calculate_mse()
+        print("Slow Balanced CANN Decoding MSE:", mse)
 
-    T = 1000  # average window: 1.5 ms
-    x = bm.linspace(-bm.pi, bm.pi, net.size_E)
-    ma = moving_average(runner.mon['E.spike'], n=T, axis=0)
-    ts = moving_average(runner.mon.ts, n=T, axis=0)
-    bump_activity = bm.vstack([bm.sum(ma * bm.cos(x[None,]), axis=1), bm.sum(ma * bm.sin(x[None,]), axis=1)])
-    readout = get_pos_from_tan(bump_activity[1], bump_activity[0])
-    mse = bm.nanmean((readout[100000:] - 0.) ** 2)
-    print("Slow CANN Decoding MSE:", mse)
+        plt.plot(ts, readout, marker='.', markersize=2., linestyle='None', alpha=0.5)
+        plt.ylim([-bm.pi / 2, bm.pi / 2])
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Population Vector Angle')
+        # todo: subplot(1,1) for decoding error on different noise strength
+        plt.tight_layout()
 
-    plt.plot(ts, readout, marker='.', markersize=2., linestyle='None', alpha=0.5)
-    plt.ylim([-bm.pi / 2, bm.pi / 2])
-    plt.xlabel('Time (ms)')
-    plt.ylabel('Population Vector Angle')
-    # todo: subplot(1,1) for decoding error on different noise strength
-    plt.tight_layout()
+    if save_mse:
+        assert noise_level_str is not None
+        mse, _, _ = calculate_mse()
+        abs_path = '/Users/charlie/Local Documents/Projects/EI Balanced CANN/1d code/coupled_model/'
+        file_name = f'fast_eicann_noise_sensitivity_{noise_level_str}.txt'
+        with open(osp.join(abs_path, file_name), 'a+') as f:
+            f.write(str(mse) + '\t')
 
 
 def sudden_change_convergence_protocol(runner, net, E_inp, duration, input_duration):
@@ -387,7 +397,7 @@ vis_setup = {
     "tracking_input": partial(tracking_protocol),
     "convergence_rate_population_readout_input": partial(convergence_rate_population_readout_protocol),
     "convergence_rate_current_input": partial(convergence_rate_current_protocol, neuron_index=700),
-    "noise_sensitivity_input": partial(noise_sensitivity_protocol),
+    "noise_sensitivity_input": partial(noise_sensitivity_protocol, save_mse=True, noise_level_str='0_1'),
     "sudden_change_convergence_input": partial(sudden_change_convergence_protocol),
     "smooth_moving_lag_input": partial(smooth_moving_lag_protocol),
     "turn_off_with_exicitation_input": partial(turn_off_with_exicitation_protocol),

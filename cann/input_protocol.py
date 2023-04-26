@@ -219,7 +219,7 @@ input_setup = {
     "convergence_rate_population_readout_input": partial(convergence_rate_population_readout_protocol, amplitude=1.0, duration=1500., dt=global_dt),
     "convergence_rate_current_input": partial(convergence_rate_current_protocol, amplitude=1.0, duration=3000., dt=global_dt),
     "noise_sensitivity_input": partial(noise_sensitivity_protocol, signal_amplitude=1.0,
-                                               noise_amplitude=0.5, noise_cv=1.0, duration=2000., dt=global_dt),
+                                               noise_amplitude=0.1, noise_cv=1.0, duration=2000., dt=global_dt),
     "sudden_change_convergence_input": partial(sudden_change_convergence_protocol, amplitude=1.0, wait_dur=300., sti_dur=300.,
                                                dt=global_dt),
     "smooth_moving_lag_input": partial(smooth_moving_lag_protocol, amplitude=1.0, duration=3000, n_period=2,
