@@ -11,7 +11,7 @@ import brainpy.math as bm
 
 __all__ = ['config']
 
-n_scale = 1
+n_scale = 5
 size_E, size_Ip, size_Id, size_ff = int(800*n_scale), int(100*n_scale), int(100*n_scale), int(1000*n_scale)
 num = size_E + size_Ip + size_Id
 num_ff = size_E + size_Id

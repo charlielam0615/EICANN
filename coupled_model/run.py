@@ -43,11 +43,13 @@ def run(exp_id):
                          jit=True,
                          monitors=[
                              # 'Id.V', 'Ip.V',
-                             'E.V',
+                            #  'E.V',
                              'E.spike',
                              # 'Ip.spike', 'Id.spike',
-                             'E2E_s.g', 'E2E_f.g', 'E2I_s.g', 'E2I_f.g',
-                             'I2I_s.g', 'I2I_f.g', 'I2E_s.g', 'I2E_f.g',
+                            #  'E2E_s.g', 'E2E_f.g', 
+                            #  'E2I_s.g', 'E2I_f.g',
+                            #  'I2I_s.g', 'I2I_f.g', 
+                            #  'I2E_s.g', 'I2E_f.g',
 
                              # for debug purposes
                             #  'E._leak',
@@ -67,6 +69,7 @@ def run(exp_id):
 if __name__ == "__main__":
     # Available protocols are:
     # 'persistent_input': persistent input for bump holding task, requires "slow_coupled" config
+    # 'scalability_input': scalability test for bump holding task, requires "slow_coupled" config
     # 'balance_check_bump_input: check balance condition in Ip using bump input
     # 'balance_check_flat_input: check balance condition in Ip using flat input
     # 'irregular_check_flat_input': check whether the network activity is irregular, requires "slow_coupled" config
@@ -77,9 +80,10 @@ if __name__ == "__main__":
     # 'sudden_change_convergence_input': analyze converging speed and save results, requires "slow_coupled"
     # 'smooth_moving_lag_input': compute the lag between stimulus and response and save results, requires "slow_coupled"
     # 'turn_off_with_exicitation_input': shut off the network with excitation
+    # 'coexistence_check_bump_input': visualize coexistence mechanism with bump input, requires "slow_coupled" config
     # 'debug_input': unit test for identity between input current calculation and monitoring
 
     import time
     start = time.time()
-    run('noise_sensitivity_input')
+    run('scalability_input')
     print(f'Time cost: {time.time() - start:.2f}s')

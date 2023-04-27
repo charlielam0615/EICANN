@@ -97,6 +97,13 @@ def plot_E_currents(runner, net, E_inp, neuron_index, ax, plot_items=("total_E",
     return {k:v for (k,v) in currents.items() if k in plot_items}
 
 
+def get_current(current, neuron_index, slice_indices=None):
+    if slice_indices is not None:
+        return current[slice_indices[0]:slice_indices[1], neuron_index]
+    else:
+        return current[:, neuron_index]
+
+
 def animate_2D(values,
                net_size,
                dt=None,

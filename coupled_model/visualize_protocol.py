@@ -16,10 +16,12 @@ from utils.vis_utils import (
     get_pos_from_tan,
     calculate_spike_center,
     plot_E_currents,
+    get_current,
     )
 
 
 global_dt = 0.01
+n_scale = 5
 
 
 def persistent_protocol(runner, net, E_inp, duration, input_duration, neuron_indices):
@@ -58,6 +60,27 @@ def persistent_protocol(runner, net, E_inp, duration, input_duration, neuron_ind
 
     fig.align_ylabels([ax1, ax2])
     plt.show()
+
+
+def scalability_protocol(runner, net, E_inp, duration, input_duration):
+    fig, gs = bp.visualize.get_figure(1, 1, 1., 4)
+    n_skip = int(n_scale)
+    skiped_spike = runner.mon['E.spike'][:, ::n_skip]
+    # subplot 1: raster plot on E
+    ax1 = fig.add_subplot(gs[:1, 0])
+    bp.visualize.raster_plot(runner.mon.ts, skiped_spike, xlim=[0, duration], markersize=1., alpha=0.3, ax=ax1)
+    # plot onset and offset of the stimulus
+    ax1.plot((input_duration[0], input_duration[0]), (0, net.size_E), color='blue', linestyle='--', linewidth=2.)
+    ax1.plot((input_duration[1], input_duration[1]), (0, net.size_E), color='blue', linestyle='--', linewidth=2.)
+    # yticks = np.arange(0, skiped_spike.shape[-1]+1, 400)
+    yticks = np.array([0, skiped_spike.shape[-1]])
+    ax1.set_ylim([0, skiped_spike.shape[-1]])
+    ax1.set_ylabel("")
+    ax1.set_xlabel("")
+    ax1.set_xticks([400, 1000])
+    ax1.set_xticklabels([])
+    ax1.set_yticks(yticks.tolist())
+    ax1.set_yticklabels((yticks * n_skip).tolist())
 
 
 def balance_check_bump_protocol(runner, net, E_inp, duration, input_duration, neuron_indices):
@@ -368,6 +391,33 @@ def turn_off_with_exicitation_protocol(runner, net, E_inp, duration, input_durat
     ax1.set_xticklabels([])
 
 
+def coexistence_check_bump_protocol(runner, net, E_inp, duration, input_duration, E_neuron_index, I_neuron_index, save_results=True):
+    st_ind = int(((input_duration[1] - input_duration[0])*0.5 + input_duration[0])/global_dt)
+    end_ind = int(((input_duration[1] - input_duration[0])*0.95 + input_duration[0])/global_dt)
+    Ip2E = get_current(runner.mon['I2E_s.g'], neuron_index=E_neuron_index, slice_indices=[st_ind, end_ind])
+    E2Ip = get_current(runner.mon['E2I_s.g'], neuron_index=I_neuron_index, slice_indices=[st_ind, end_ind])
+    Id2E = get_current(runner.mon['I2E_f.g'], neuron_index=E_neuron_index, slice_indices=[st_ind, end_ind])
+    E2Id = get_current(runner.mon['E2I_f.g'], neuron_index=I_neuron_index, slice_indices=[st_ind, end_ind])
+    net_size = sum([net.size_E, net.size_Id, net.size_Ip])
+
+    if save_results:
+        import uuid
+        abspath = '/Users/charlie/Local Documents/Projects/EI Balanced CANN/1d code/experiments/check_coexistence_mechanism/data/'
+        np.savez(f'{abspath}coexistence_check_bump_{str(uuid.uuid4())[:5]}.npz', net_size=net_size, Ip2E=Ip2E, E2Ip=E2Ip, Id2E=Id2E, E2Id=E2Id)
+
+    fig, gs = bp.visualize.get_figure(1, 4, 3, 3)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1.plot(Ip2E, color='blue', label='Ip2E')
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax2.plot(E2Ip, color='blue', label='E2Ip')
+    ax3 = fig.add_subplot(gs[0, 2])
+    ax3.plot(Id2E, color='blue', label='Id2E')
+    ax4 = fig.add_subplot(gs[0, 3])
+    ax4.plot(E2Id, color='blue', label='E2Id')
+
+    plt.show()
+
+
 def debug_protocol(runner, net, E_inp, duration, input_duration, neuron_index):
     fig, gs = bp.visualize.get_figure(2, 1, 2, 3)
     # subplot 1: plot current using `plot_E_currents`
@@ -391,7 +441,8 @@ def debug_protocol(runner, net, E_inp, duration, input_duration, neuron_index):
 
 vis_setup = {
     "persistent_input": partial(persistent_protocol, neuron_indices=(400, 50)),
-    "balance_check_bump_input": partial(balance_check_bump_protocol, neuron_indices=[int(400*1), int(100*1)]),
+    "scalability_input": partial(scalability_protocol),
+    "balance_check_bump_input": partial(balance_check_bump_protocol, neuron_indices=[int(400*n_scale), int(100*n_scale)]),
     "balance_check_flat_input": partial(balance_check_flat_protocol, neuron_indices=[375, 125]),
     "irregular_check_flat_input": partial(irregular_check_flat_protocol),
     "tracking_input": partial(tracking_protocol),
@@ -401,5 +452,7 @@ vis_setup = {
     "sudden_change_convergence_input": partial(sudden_change_convergence_protocol),
     "smooth_moving_lag_input": partial(smooth_moving_lag_protocol),
     "turn_off_with_exicitation_input": partial(turn_off_with_exicitation_protocol),
+    "coexistence_check_bump_input": partial(coexistence_check_bump_protocol, 
+                                            E_neuron_index=int(400*n_scale), I_neuron_index=int(50*n_scale), save_results=True),
     "debug_input": partial(debug_protocol, neuron_index=400),
 }
