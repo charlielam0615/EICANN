@@ -7,3 +7,4 @@ __pychache__
 .pytest_cache
 *.txt
 obsolete_files
+draw_utils/

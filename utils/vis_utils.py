@@ -4,14 +4,18 @@ from matplotlib import animation
 from matplotlib.gridspec import GridSpec
 from brainpy import math
 import brainpy.math as bm
+import pandas as pd
 from warnings import warn
 
 
-
-def moving_average(a, n, axis):
-    ret = bm.cumsum(a, axis=axis, dtype=bm.float32)
+def _moving_average_1d(a, n):
+    ret = bm.cumsum(a, axis=0, dtype=bm.float32)
     ret[n:] = ret[n:] - ret[:-n]
     return ret[n - 1:] / n
+
+def moving_average(a, n, axis=0):
+    ret = bm.apply_along_axis(lambda x: _moving_average_1d(x, n), axis=axis, arr=a)
+    return ret
 
 
 def get_pos_from_tan(a, b):
@@ -22,30 +26,67 @@ def get_pos_from_tan(a, b):
     return pos
 
 
-def calculate_population_readout(activity, T):
-    size = activity.shape[1]
-    x = bm.linspace(-bm.pi, bm.pi, size)
-    ma = moving_average(activity, n=T, axis=0)  # average window: 1 ms
-    bump_activity = bm.vstack([bm.sum(ma * bm.cos(x[None, ]), axis=1), bm.sum(ma * bm.sin(x[None, ]), axis=1)])
-    readout = bm.array([[1., 0.]]) @ bump_activity
-    return readout
+# def calculate_population_readout(activity, T):
+#     size = activity.shape[1]
+#     x = bm.linspace(-bm.pi, bm.pi, size)
+#     ma = moving_average(activity, n=T, axis=0)  # average window: 1 ms
+#     bump_activity = bm.vstack([bm.sum(ma * bm.cos(x[None, ]), axis=1), bm.sum(ma * bm.sin(x[None, ]), axis=1)])
+#     readout = bm.array([[1., 0.]]) @ bump_activity
+#     return readout
 
 
-def calculate_spike_center(activity, size, T=None, feature_range=None):
-    if T is not None:
-        activity = moving_average(activity, n=T, axis=0)
+# def calculate_spike_center(activity, size, T=None, feature_range=None):
+#     if T is not None:
+#         activity = moving_average(activity, n=T, axis=0)
 
-    if feature_range is None:
-        x = bm.arange(size)
-        spike_center = bm.sum(activity * x[None, ], axis=1) / bm.sum(activity, axis=1)
-    else:
-        assert len(feature_range) == 2, "feature_range must be a tuple of two numbers."
-        features = bm.linspace(feature_range[0], feature_range[1], size)
-        spike_center = bm.sum(activity * features[None, ], axis=1) / bm.sum(activity, axis=1)
-    return spike_center
+#     if feature_range is None:
+#         x = bm.arange(size)
+#         spike_center = bm.sum(activity * x[None, ], axis=1) / bm.sum(activity, axis=1)
+#     else:
+#         assert len(feature_range) == 2, "feature_range must be a tuple of two numbers."
+#         features = bm.linspace(feature_range[0], feature_range[1], size)
+#         spike_center = bm.sum(activity * features[None, ], axis=1) / bm.sum(activity, axis=1)
+#     return spike_center
 
 
-def plot_E_currents(runner, net, E_inp, neuron_index, ax, plot_items=("total_E", "total_I", "total"), smooth_T=None):
+def decode_population_vector(v):
+    """
+    Decode 1D population vector v to a coordinate in the range of (-pi, pi) with periodic boundary condition.
+    args:
+        v: population vector, shape (T, x)
+    return:
+        theta: decoded coordinate in radians, each of shape (T,)
+    """
+    def adjust_range(cos_value, sin_value):
+        # adjust arctan range to (-pi, pi)
+        tan_value = cos_value / sin_value
+        theta = (tan_value > 0).astype(bm.float32) * (bm.arctan(tan_value)-(sin_value < 0).astype(bm.float32)*bm.pi) + \
+                (tan_value < 0).astype(bm.float32) * \
+            (bm.arctan(tan_value)+(sin_value < 0).astype(bm.float32)*bm.pi)
+        return theta
+
+    T, d = v.shape
+    x = bm.linspace(-bm.pi, bm.pi, d, endpoint=False)
+    coord = bm.stack([
+        bm.cos(x[None, :]) * v,
+        bm.sin(x[None, :]) * v], axis=-1
+    )
+    pcv = bm.sum(coord, axis=1)
+    theta = adjust_range(cos_value=pcv[:, 1], sin_value=pcv[:, 0])
+    norm = bm.linalg.norm(pcv, axis=1)
+
+    return theta, norm
+
+
+
+def plot_and_fill_between(ax, x, y_mean, y_std, color, label=None, shade_alpha=0.3, **kwargs):
+    ax.plot(x, y_mean, color=color, label=label, **kwargs)
+    ax.fill_between(x, y_mean+y_std, y_mean-y_std, color=color, alpha=shade_alpha, step='mid')
+    # ax.fill_between(x, y_mean-y_std, y_mean+y_std, color=color, step='pre')
+
+
+
+def get_E_currents(runner, net, E_inp, neuron_index, items=("total_E", "total_I", "total"), smooth_T=None):
     currents = {}
     leak = net.E.gl * runner.mon['E.V'][:, neuron_index]
     Fc_inp = E_inp[:, neuron_index]
@@ -71,11 +112,21 @@ def plot_E_currents(runner, net, E_inp, neuron_index, ax, plot_items=("total_E",
     total = total_E + total_I
 
     currents.update({"total_E": total_E, "total_I": total_I, "total_rec": total_rec, "total": total})
+    ts = runner.mon.ts if smooth_T is None else moving_average(runner.mon.ts, n=smooth_T, axis=0)
+
+    ret_value = {k:v for (k,v) in currents.items() if k in items}
+    ret_value.update({"ts": ts})
+    return ret_value
+   
+
+
+def plot_E_currents(runner, net, E_inp, neuron_index, ax, plot_items=("total_E", "total_I", "total"), smooth_T=None):
+    
+    currents = get_E_currents(runner, net, E_inp, neuron_index, plot_items, smooth_T)
+    ts = currents['ts']
     
     color_palette = ['blue', 'red', 'green', 'orange', 'purple', 'gray', 'pink', 
                      'brown', 'yellow', 'cyan', 'magenta', 'olive', 'lime']
-
-    ts = runner.mon.ts if smooth_T is None else moving_average(runner.mon.ts, n=smooth_T, axis=0)
 
     for i, item in enumerate(plot_items):
         if smooth_T is not None:
@@ -94,14 +145,35 @@ def plot_E_currents(runner, net, E_inp, neuron_index, ax, plot_items=("total_E",
             ax.plot(ts, currents['total'], linestyle=linestyle,
                     label=item, alpha=alpha, linewidth=linewidth, color='black')
 
-    return {k:v for (k,v) in currents.items() if k in plot_items}
+    return currents
 
 
-def get_current(current, neuron_index, slice_indices=None):
+def get_average_and_std(current, T=5000):
+    # compute a rolling window of length `T` for `current` of the mean and standard deviation using Pandas
+    current_series = pd.Series(current)
+    rolling_mean = current_series.rolling(window=T).mean().dropna().values
+    rolling_std = current_series.rolling(window=T).std().dropna().values
+    return rolling_mean, rolling_std
+
+
+def index_and_slice_currents(current, neuron_index, slice_indices=None):
     if slice_indices is not None:
         return current[slice_indices[0]:slice_indices[1], neuron_index]
     else:
         return current[:, neuron_index]
+    
+
+def set_fig_size(ax_w, ax_h, ax=None):
+    # https://stackoverflow.com/questions/44970010/axes-class-set-explicitly-size-width-height-of-axes-in-given-units
+    """ ax_w, ax_h: width, height in inches """
+    if not ax: ax=plt.gca()
+    l = ax.figure.subplotpars.left
+    r = ax.figure.subplotpars.right
+    t = ax.figure.subplotpars.top
+    b = ax.figure.subplotpars.bottom
+    figw = float(ax_w)/(r-l)
+    figh = float(ax_h)/(t-b)
+    ax.figure.set_size_inches(figw, figh)
 
 
 def animate_2D(values,

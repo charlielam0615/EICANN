@@ -8,17 +8,19 @@ from utils.input_utils import generate_bump_stimulus
 
 from configs import (
     slow_coupled_config,
+    fast_coupled_config,
     )
 
 config_and_name = {
         slow_coupled_config: "slow_coupled",
+        fast_coupled_config: "fast_coupled"
         }
 
 config_file = slow_coupled_config
 config = config_file.config
 
 global_dt = 0.01
-n_size = 5
+n_size = 1
 size_E, size_I = int(800 * n_size), int(100*n_size)
 stim_a = 2 * config.stim_a ** 2
 
@@ -283,7 +285,7 @@ def smooth_moving_lag_protocol(amplitude, n_period, dt=global_dt):
 
 
 def turn_off_with_exicitation_protocol(amplitude, dt=global_dt):
-    duration=1600.
+    duration=1800.
     input_duration = [399., 1400]
     hold_dur = input_duration[1]-input_duration[0]-1.
     bg_str = amplitude * 0.1

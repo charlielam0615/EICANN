@@ -27,9 +27,9 @@ class LIF(bp.dyn.NeuGroup):
         self.ext_input = bm.Variable(bm.zeros(self.size))
 
         # for debug purposes
-        # self._leak = bm.Variable(bm.zeros(self.size))
-        # self._recinp = bm.Variable(bm.zeros(self.size))
-        # self._ext = bm.Variable(bm.zeros(self.size))
+        self._leak = bm.Variable(bm.zeros(self.size))
+        self._recinp = bm.Variable(bm.zeros(self.size))
+        self._ext = bm.Variable(bm.zeros(self.size))
 
         # integral
         self.integral = bp.odeint(f=self.derivative, method='euler')
@@ -52,9 +52,9 @@ class LIF(bp.dyn.NeuGroup):
         self.refractory.value = bm.logical_or(refractory, spike)
 
         # for debug purposes
-        # self._leak.value = self.gl * self.V
-        # self._recinp.value = self.input
-        # self._ext.value = self.ext_input
+        self._leak.value = self.gl * self.V
+        self._recinp.value = self.input
+        self._ext.value = self.ext_input
 
 
         self.input[:] = 0.

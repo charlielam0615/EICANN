@@ -17,13 +17,12 @@ num = size_E + size_Ip
 num_ff = num
 prob = 0.25
 tau_scale = 10
-cann_scale = 1.0
-
+cann_scale = 1.0 * 3.
 
 config = Config(
     global_dt = 0.01,
     stim_a = bm.pi/6,
-    conn_a = bm.pi/10,
+    conn_a = bm.pi/8,
 
     # ==== Neuron parameters =====
     n_scale = n_scale,
@@ -41,13 +40,14 @@ config = Config(
 
     # ===== CANN Parameters =====
     cann_scale = cann_scale,
-    tau_Es = 0.35 * tau_scale,
+    tau_Es = 0.75 * tau_scale,
     tau_Is = 1.0 * tau_scale,
-    gEE = 190. * cann_scale / (size_E*1.0),
+    gEE = 185. * cann_scale / (size_E*1.0),
     gEIp = 16. * cann_scale / (size_E*prob),
     gIpE = -11. * cann_scale / (size_Ip*prob),
     gIpIp = -4. * cann_scale / (size_Ip*prob),
     shunting_k = 1.0,
+
 
     # ===== Input Parameters =====
     f_E = 0.1,

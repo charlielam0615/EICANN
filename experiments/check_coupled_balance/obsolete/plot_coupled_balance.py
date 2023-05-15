@@ -71,6 +71,7 @@ Total input -4.47019, -3.67561, -2.92109, -3.21928, -2.66865
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import Divider, Size
 
 
 def data_dict2list(dict_data):
@@ -88,9 +89,19 @@ def data_process(size_key, E_input, I_input, total_input, neuron_position):
 
 
 def data_plot():
-    figure = plt.figure(figsize=(7, 2))
+    figure = plt.figure(figsize=(7.0, 2.3))
+
+    # The first items are for padding and the second items are for the axes.
+    # sizes are in inch.
+    h = [Size.Fixed(1.0), Size.Fixed(1.8), Size.Fixed(1.0), Size.Fixed(1.8)]
+    v = [Size.Fixed(0.5), Size.Fixed(1.2), Size.Fixed(0.5)]
+
+    divider = Divider(figure, (0, 0, 1, 1), h, v, aspect=False)
+
     for i, key in enumerate(["center", "peripheral"]):
-        ax = figure.add_subplot(1, 2, i+1)
+        # The width and height of the rectangle are ignored.
+        ax = figure.add_axes(divider.get_position(),
+                      axes_locator=divider.new_locator(nx=1+i*2, ny=1))
         # plot E data
         ax.errorbar(net_size, data_dict2list(data[key]["mean_E"]),
                     yerr=data_dict2list(data[key]["std_E"]),
@@ -123,8 +134,7 @@ def data_plot():
             ax.set_ylim([-15, 15])
         ax.grid()
 
-    plt.legend(loc='upper right', bbox_to_anchor=(1.5, 1.0), fancybox=True, shadow=True)
-    plt.tight_layout()
+    plt.legend(loc='center', bbox_to_anchor=(1.4, 0.6), fancybox=True, shadow=True)
     return
 
 

@@ -34,7 +34,7 @@ red = '#C30017'
 
 colors = [red, red, blue, blue]
 linestyles = ['--', '-', '--', '-']
-linewidth = [2, 2, 2, 2]
+linewidth = [2, 2, 1, 1]
 label = {'Id2E': 'Id to E', 'E2Id': 'E to Id', 'Ip2E': 'Ip to E', 'E2Ip': 'E to Ip'}
         
 # plot
@@ -51,6 +51,7 @@ for i, conn in enumerate(label.keys()):
                 linewidth=linewidth[i], label=label[conn])
     
 ax.set_xticks([1000, 2000, 3000, 4000, 5000])
+ax.spines[['right', 'top']].set_visible(False)
 plt.legend()
 plt.show()
 

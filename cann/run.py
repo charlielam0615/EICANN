@@ -14,8 +14,10 @@ config_and_name = {slow_cann_config: "slow_CANN",
                    turn_off_config: "turn_off_with_excitation",
                    }
 
-config_file = fast_cann_config
+config_file = slow_cann_config
 config = config_file.config
+
+print(f"Using config: {config_and_name[config_file]}")
 
 bp.math.set_platform('cpu')
 global_dt = 0.01
@@ -69,8 +71,7 @@ if __name__ == "__main__":
     # 'noise_sensitivity_input': compare bump sensitivity to noise
     # 'sudden_change_convergence_input': analyze converging speed for sudden change
     # 'smooth_moving_lag_input': compute the lag between stimulus and response
-    # 'turn_off_with_exicitation_input': turn off with excitation input
+    # 'turn_off_with_exicitation_input': turn off with excitation input, requires "turn_off_with_excitation" config
     # 'debug_input': unit test for identity between input current calculation and monitoring
 
-    print(f"Using config: {config_and_name[config_file]}")
-    run('noise_sensitivity_input')
+    run('convergence_rate_population_readout_input')

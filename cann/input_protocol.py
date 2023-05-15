@@ -22,13 +22,10 @@ stim_a = 2 * config.stim_a ** 2
 
 
 def persistent_protocol(amplitude, dt):
-    # === Protocol Paramters ====
-    duration = 2400.
-    input_duration = [399., 1400.]
+    duration = 1600.
+    input_duration = [399., 1000.]
     hold_dur = input_duration[1] - input_duration[0] - 1
     bg_str = amplitude * 0.1
-    # ===========================
-
     st_amp = bp.inputs.section_input(values=[[bg_str]], durations=[input_duration[0]], dt=dt)
     ramp_amp = bp.inputs.ramp_input(c_start=0, c_end=1 - bg_str, duration=1., dt=dt)
     hold_amp = bp.inputs.section_input(values=[[1 - bg_str]], durations=[hold_dur], dt=dt)
@@ -43,7 +40,6 @@ def persistent_protocol(amplitude, dt):
         hold_amp * E_bump[None, ] + bg_str * bm.ones([1, size_E]),
         remove_amp*bm.ones([1, size_E]),
     ])
-
     I_inputs = bm.concatenate([
         st_amp * bm.ones([1, size_I]),
         ramp_amp[:, None] * I_bump[None, ] + bg_str*bm.ones([1, size_I]),
@@ -168,7 +164,8 @@ def smooth_moving_lag_protocol(amplitude, duration, n_period, dt):
     return E_inputs, I_inputs, duration, input_duration
 
 
-def turn_off_with_exicitation_protocol(amplitude, duration, dt):
+def turn_off_with_exicitation_protocol(amplitude, dt=global_dt):
+    duration=2400.
     input_duration = [399., 1400]
     hold_dur = input_duration[1]-input_duration[0]-1.
     bg_str = amplitude * 0.1
@@ -224,7 +221,7 @@ input_setup = {
                                                dt=global_dt),
     "smooth_moving_lag_input": partial(smooth_moving_lag_protocol, amplitude=1.0, duration=3000, n_period=2,
                                           dt=global_dt),
-    "turn_off_with_exicitation_input": partial(turn_off_with_exicitation_protocol, amplitude=1.0, duration=2400., dt=global_dt),
+    "turn_off_with_exicitation_input": partial(turn_off_with_exicitation_protocol, amplitude=1.0, dt=global_dt),
     "debug_input": partial(debug_input, amplitude=1.0, duration=20., dt=global_dt),                        
 }
 

@@ -7,50 +7,67 @@ import brainpy as bp
 import brainpy.math as bm
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+from matplotlib.colors import ListedColormap
+from matplotlib.colors import to_rgb, to_rgba
+from mpl_toolkits.axes_grid1 import Divider, Size
 from scipy import signal
 from functools import partial
 
 from utils.vis_utils import (
-    calculate_population_readout, 
+    decode_population_vector, 
     moving_average, 
     get_pos_from_tan,
-    calculate_spike_center,
     plot_E_currents,
-    get_current,
+    get_E_currents,
+    index_and_slice_currents,
+    plot_and_fill_between,
+    get_average_and_std,
     )
 
 
 global_dt = 0.01
-n_scale = 5
+n_scale = 1
 
 
 def persistent_protocol(runner, net, E_inp, duration, input_duration, neuron_indices):
-    fig, gs = bp.visualize.get_figure(2, 1, 1.5, 4.)
-    # subplot 1: raster plot on E
-    ax1 = fig.add_subplot(gs[:1, 0])
+    fig = plt.figure(figsize=(5., 4.5))
+
+    # The first items are for padding and the second items are for the axes.
+    # sizes are in inch.
+    h = [Size.Fixed(1.0), Size.Fixed(3.)]
+    v = [Size.Fixed(0.5), Size.Fixed(1.2), Size.Fixed(0.5), Size.Fixed(1.2)]
+
+    divider = Divider(fig, (0, 0, 1, 1), h, v, aspect=False)
+    # The width and height of the rectangle are ignored.
+
+    ax1 = fig.add_axes(divider.get_position(),
+                      axes_locator=divider.new_locator(nx=1, ny=3))
+
     bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], xlim=[0, duration], markersize=1., alpha=0.3)
     # plot onset and offset of the stimulus
-    ax1.plot((input_duration[0], input_duration[0]), (0, net.size_E), color='blue', linestyle='--', linewidth=2.)
-    ax1.plot((input_duration[1], input_duration[1]), (0, net.size_E), color='blue', linestyle='--', linewidth=2.)
+    ax1.plot((input_duration[0], input_duration[0]), (0, net.size_E), color='blue', linestyle='--', linewidth=1.5)
+    ax1.plot((input_duration[1], input_duration[1]), (0, net.size_E), color='blue', linestyle='--', linewidth=1.5)
     ax1.set_xlabel("")
     ax1.set_ylim([0, net.size_E])
     ax1.set_xticklabels([])
 
     # subplot 2: readout plot
-    ax2 = fig.add_subplot(gs[1:2, 0])
+    ax2 = fig.add_axes(divider.get_position(),
+                      axes_locator=divider.new_locator(nx=1, ny=1))
     T = 200  # 2 ms
     ts = moving_average(runner.mon.ts, n=T, axis=0)
     readout = calculate_population_readout(activity=runner.mon['E.spike'], T=T)
     fitted = moving_average(readout.T, n=T * 10, axis=0)
     nm_readout = readout.T / bm.max(fitted) * 1.1
     fitted = fitted / bm.max(fitted) * 1.1
-    ax2.plot(ts, nm_readout, label='readout', alpha=0.3, color="gray")
-    ax2.plot(ts[T * 10 - 1:], fitted, marker='.', markersize=2., linestyle='None', label='average', color="black")
+    ax2.plot(ts, nm_readout, label='_projection', alpha=0.2, color="red")
+    ax2.plot(ts[T * 10 - 1:], fitted, linewidth=1., linestyle='-', label='readout', color="red")
     # plot onset and offset of the stimulus
     ax2.plot((input_duration[0], input_duration[0]), (bm.min(nm_readout), bm.max(nm_readout)),
-             color='blue', linestyle='--', linewidth=2.)
+             color='blue', linestyle='--', linewidth=1.5)
     ax2.plot((input_duration[1], input_duration[1]), (bm.min(nm_readout), bm.max(nm_readout)),
-             color='blue', linestyle='--', linewidth=2.)
+             color='blue', linestyle='--', linewidth=1.5)
     ax2.legend(loc='upper right')
     ax2.grid('on')
     ax2.set_xlim([0, duration])
@@ -195,26 +212,49 @@ def irregular_check_flat_protocol(runner, net, E_inp, duration, input_duration):
 
 
 def tracking_protocol(runner, net, E_inp, duration, input_duration):
-    fig, gs = bp.visualize.get_figure(1, 1, 1.5, 2.5)
+    fig = plt.figure(figsize=(3.5, 2.5))
+
+    # The first items are for padding and the second items are for the axes.
+    # sizes are in inch.
+    h = [Size.Fixed(1.0), Size.Fixed(1.5)]
+    v = [Size.Fixed(0.5), Size.Fixed(1.2)]
+
+    divider = Divider(fig, (0, 0, 1, 1), h, v, aspect=False)
+    # The width and height of the rectangle are ignored.
+
+    ax1 = fig.add_axes(divider.get_position(),
+                      axes_locator=divider.new_locator(nx=1, ny=1))
     # raster E plot
-    ax1 = fig.add_subplot(gs[:1, 0])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.5)
+    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.3)
     ax1.plot(bm.arange(input_duration[1]), bm.argmax(E_inp[::100], axis=1), label='input peak', color='blue',
-             alpha=1.0, marker='.', markersize=2.5, linestyle='None')
+             alpha=1.0, linewidth=2.0)
     
     T = 1000
     activity = moving_average(runner.mon['E.spike'], n=T, axis=0)
-    spike_center = calculate_spike_center(activity, net.size_E)
+    spike_center = decode_population_vector(activity)
     ts = moving_average(runner.mon.ts, n=T, axis=-1)
     ax1.plot(ts, spike_center, color='red', alpha=1.0, linewidth=1.5)
-    ax1.set_xlim([245, 455])
+    ax1.set_xlim([220, 480])
+    ax1.set_ylim([200, 600])
+    ax1.set_yticks([200, 400, 600])
 
 
 def convergence_rate_population_readout_protocol(runner, net, E_inp, duration, input_duration):
-    fig, gs = bp.visualize.get_figure(3, 4, 1.7, 2)
+    fig = plt.figure(figsize=(4, 5))
+
+    # The first items are for padding and the second items are for the axes.
+    # sizes are in inch.
+    h = [Size.Fixed(1.0), Size.Fixed(2.)]
+    v = [Size.Fixed(0.25), Size.Fixed(0.8), Size.Fixed(0.25), Size.Fixed(0.8), Size.Fixed(0.25), Size.Fixed(0.8), Size.Fixed(0.25), Size.Fixed(0.2)]
+
+    divider = Divider(fig, (0, 0, 1, 1), h, v, aspect=False)
+    # The width and height of the rectangle are ignored.
+
+    ax = fig.add_axes(divider.get_position(),
+                      axes_locator=divider.new_locator(nx=1, ny=5))
+
     # raster plot on E
-    ax = fig.add_subplot(gs[:1, :3])
-    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.5)
+    bp.visualize.raster_plot(runner.mon.ts, runner.mon['E.spike'], markersize=1., alpha=0.3, ax=ax)
     ax.plot(input_duration, [int(net.size_E / 2), int(net.size_E / 2)],
              label='input peak', color='white', linestyle='--', linewidth=1.5)
     ax.set_xlim([0, duration])
@@ -222,11 +262,36 @@ def convergence_rate_population_readout_protocol(runner, net, E_inp, duration, i
     ax.set_xlabel("")
     ax.set_ylabel("")
     ax.set_xticklabels([])
-    ax.set_yticks([0, 200, 400, 600, 800])
+    ax.set_yticks([0, 400, 800])
     ax.set_yticklabels([])
 
-    # PPC readout normalized
-    ax = fig.add_subplot(gs[1:2, :3])
+
+    # PPC readout
+    ax = fig.add_axes(divider.get_position(),
+                      axes_locator=divider.new_locator(nx=1, ny=3))
+    T = 50  # 0.5 ms
+    ts = moving_average(runner.mon.ts, n=T, axis=0)
+    neuron_index = int(net.size_E/2)
+    x = bm.linspace(-bm.pi, bm.pi, net.size_E)
+    ma = moving_average(runner.mon['E.spike'], n=T, axis=0)
+    decoded_pos, norm = decode_population_vector(ma)
+    # adjust the color a little bit for better visualization
+    norm_ = moving_average(norm, n=3*T, axis=0)
+    norm = bm.concatenate([norm_, norm[-3*T+1:]])
+    norm = norm - bm.mean(norm[10000:]) * 0.25
+    confidence = bm.clip(norm / bm.mean(norm[-10000:]), a_min=0., a_max=1.)
+    color = [plt.cm.YlOrBr(conf.item()*0.8 + 0.01) for conf in confidence]
+    im = ax.scatter(ts, decoded_pos, marker='.', color=color, edgecolors=None, s=1.0)
+    ax.set_xlim([0, duration])
+    ax.set_ylim([-np.pi, np.pi])
+    ax.set_yticks([-np.pi, 0, np.pi])
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+
+
+    # PPC readout projection
+    ax = fig.add_axes(divider.get_position(),
+                      axes_locator=divider.new_locator(nx=1, ny=1))
     T = 100  # 1 ms
     ts = moving_average(runner.mon.ts, n=T, axis=0)
     neuron_index = int(net.size_E/2)
@@ -238,37 +303,70 @@ def convergence_rate_population_readout_protocol(runner, net, E_inp, duration, i
     ma_input = moving_average(E_inp[:, neuron_index], n=T, axis=0)
     ma_input = ma_input - bm.min(ma_input)
     fitted = moving_average(nm_readout, n=T * 10, axis=0)
-    ax.plot(ts, nm_readout, label='projection', alpha=0.5)
-    ax.plot(ts[T*10-1:], fitted, marker='.', markersize=2., linestyle='None', label='average')
-    ax.plot(ts, ma_input / bm.max(ma_input), color='black', linewidth=2., label='input')
+    ax.plot(ts, nm_readout, label='_projection', alpha=0.3, color='orange')
+    ax.plot(ts[T*10-1:], fitted, linewidth=1., linestyle='-', label='        ', color='orange')
+    ax.plot(ts, ma_input / bm.max(ma_input), color='black', linewidth=2., label='_input', alpha=0.5, linestyle='-')
     ax.set_xlim([0, duration])
-    ax.set_xlabel("Time (ms)")
+    # ax.set_xlabel("Time (ms)")
     ax.set_ylim([-0.8, 2])
     ax.set_yticklabels([])
     ax.grid()
     # ax.set_ylabel("Readout")
 
-    plt.legend(loc='center', bbox_to_anchor=(1.25, 1.0), fancybox=True, shadow=True)
-    plt.tight_layout()
-    plt.show()
+    plt.legend()
+    # plt.legend(loc='center', bbox_to_anchor=(1.25, 1.0), fancybox=True, shadow=True)
+    # plt.tight_layout()
+
+    # colorbar
+    ax = fig.add_axes(divider.get_position(),
+                      axes_locator=divider.new_locator(nx=1, ny=7))
+    cmap = plt.cm.get_cmap('YlOrBr', 512)
+    newcmp = ListedColormap(cmap(np.linspace(0., 0.8, 256)))
+    norm = mpl.colors.Normalize(vmin=0, vmax=1)
+    cbar = mpl.colorbar.ColorbarBase(ax, cmap=newcmp, norm=norm, orientation='horizontal')
+    # cbar = fig.colorbar(im, cax=ax, orientation='horizontal')
+    cbar.set_ticks([])
+
+    plt.savefig("/Users/charlie/Local Documents/Projects/EI Balanced CANN/overleaf_version/AI - formal figs/Fig4/Fig4A2r_new.png", format='png', dpi=900)
 
 
-def convergence_rate_current_protocol(runner, net, E_inp, duration, input_duration, neuron_index):
-    fig, gs = bp.visualize.get_figure(2, 5, 1.8, 1)
-    # subplot 1: plot current on central E
-    ax2 = fig.add_subplot(gs[0, 0:4])
-    plot_E_currents(runner, net, E_inp, neuron_index, ax2, 
-                    plot_items=['total_E', 'total_I', 'total'], 
-                    # plot_items=['Ec_s', 'Ec_f', 'Ic_s', 'Ic_f', 'Fc', 'shunting'], 
-                    smooth_T=2500)
 
-    ax2.grid('on')
-    ax2.set_xlim([500, 2000])
-    ax2.set_xlabel("Time (ms)")
-    ax2.legend(loc='center', bbox_to_anchor=(1.22, 0.5), fancybox=True, shadow=True)
 
-    plt.tight_layout()
-    plt.show()
+
+
+def convergence_rate_current_protocol(runner, net, E_inp, duration, input_duration):
+    E_size = net.size_E
+    peri_index = int(E_size * 0.9)
+    cent_index = int(E_size * 0.5)
+
+    layout_args = {
+        'center': {
+            'index': cent_index,
+        },
+        'peripheral': {
+            'index': peri_index,
+        }
+    }
+
+    save_data = {}
+
+    for neu_loc in layout_args.keys():
+        currents = get_E_currents(
+            runner, net, E_inp, layout_args[neu_loc]['index'], 
+            items=['total_E', 'total_I', 'total'], 
+            smooth_T=None)
+        
+        for key, value in currents.items():
+            save_data[f"{neu_loc}_{key}"] = value
+
+    for neu_loc in layout_args.keys():
+        ratio = save_data[f"{neu_loc}_total_E"] / np.abs(save_data[f"{neu_loc}_total_I"])
+        save_data[f"{neu_loc}_ratio"] = ratio
+
+    import uuid
+    save_path = '/Users/charlie/Local Documents/Projects/EI Balanced CANN/1d code/experiments/compare_ei_ratio/data/'
+    np.savez(f"{save_path}unbalanced_{str(uuid.uuid4())[:5]}.npz", **save_data)
+
 
 
 def noise_sensitivity_protocol(runner, net, E_inp, duration, input_duration, save_mse, noise_level_str=None):
@@ -394,10 +492,10 @@ def turn_off_with_exicitation_protocol(runner, net, E_inp, duration, input_durat
 def coexistence_check_bump_protocol(runner, net, E_inp, duration, input_duration, E_neuron_index, I_neuron_index, save_results=True):
     st_ind = int(((input_duration[1] - input_duration[0])*0.5 + input_duration[0])/global_dt)
     end_ind = int(((input_duration[1] - input_duration[0])*0.95 + input_duration[0])/global_dt)
-    Ip2E = get_current(runner.mon['I2E_s.g'], neuron_index=E_neuron_index, slice_indices=[st_ind, end_ind])
-    E2Ip = get_current(runner.mon['E2I_s.g'], neuron_index=I_neuron_index, slice_indices=[st_ind, end_ind])
-    Id2E = get_current(runner.mon['I2E_f.g'], neuron_index=E_neuron_index, slice_indices=[st_ind, end_ind])
-    E2Id = get_current(runner.mon['E2I_f.g'], neuron_index=I_neuron_index, slice_indices=[st_ind, end_ind])
+    Ip2E = index_and_slice_currents(runner.mon['I2E_s.g'], neuron_index=E_neuron_index, slice_indices=[st_ind, end_ind])
+    E2Ip = index_and_slice_currents(runner.mon['E2I_s.g'], neuron_index=I_neuron_index, slice_indices=[st_ind, end_ind])
+    Id2E = index_and_slice_currents(runner.mon['I2E_f.g'], neuron_index=E_neuron_index, slice_indices=[st_ind, end_ind])
+    E2Id = index_and_slice_currents(runner.mon['E2I_f.g'], neuron_index=I_neuron_index, slice_indices=[st_ind, end_ind])
     net_size = sum([net.size_E, net.size_Id, net.size_Ip])
 
     if save_results:
@@ -447,7 +545,7 @@ vis_setup = {
     "irregular_check_flat_input": partial(irregular_check_flat_protocol),
     "tracking_input": partial(tracking_protocol),
     "convergence_rate_population_readout_input": partial(convergence_rate_population_readout_protocol),
-    "convergence_rate_current_input": partial(convergence_rate_current_protocol, neuron_index=700),
+    "convergence_rate_current_input": partial(convergence_rate_current_protocol),
     "noise_sensitivity_input": partial(noise_sensitivity_protocol, save_mse=True, noise_level_str='0_1'),
     "sudden_change_convergence_input": partial(sudden_change_convergence_protocol),
     "smooth_moving_lag_input": partial(smooth_moving_lag_protocol),
