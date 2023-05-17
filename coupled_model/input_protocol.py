@@ -9,18 +9,22 @@ from utils.input_utils import generate_bump_stimulus
 from configs import (
     slow_coupled_config,
     fast_coupled_config,
+    balance_coupled_config,
     )
 
 config_and_name = {
         slow_coupled_config: "slow_coupled",
-        fast_coupled_config: "fast_coupled"
+        fast_coupled_config: "fast_coupled",
+        balance_coupled_config: "balance_coupled",
         }
 
-config_file = slow_coupled_config
+config_file = balance_coupled_config
 config = config_file.config
 
+print(f"Using {config_and_name[config_file]} in input file.")
+
 global_dt = 0.01
-n_size = 1
+n_size = config.n_scale
 size_E, size_I = int(800 * n_size), int(100*n_size)
 stim_a = 2 * config.stim_a ** 2
 

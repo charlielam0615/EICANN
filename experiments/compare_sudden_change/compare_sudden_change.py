@@ -46,13 +46,13 @@ def compare_sudden_change():
     # plot stimulus
     ax.plot(cann_ts, cann_sti, linewidth=1.5, label="_Input", alpha=1.0, color='black')
     # plot cann response
-    ax.plot(cann_ts, mean_cann_bump, linewidth=1.5, label="CANN", alpha=1.0, color='blue')
+    ax.plot(cann_ts, mean_cann_bump, linewidth=1., label="CANN", alpha=1.0, color='blue')
     ax.fill_between(cann_ts, mean_cann_bump+std_cann_bump, mean_cann_bump-std_cann_bump,
-                     color='blue', alpha=0.2)
+                     facecolor='blue', alpha=0.3)
     # plot ei balanced cann resposne
-    ax.plot(coupled_ts, mean_coupled_bump, linewidth=1.5, label="Our Model", alpha=1.0, color='red')
+    ax.plot(coupled_ts, mean_coupled_bump, linewidth=1., label="Our Model", alpha=1.0, color='Orange')
     ax.fill_between(coupled_ts, mean_coupled_bump+std_coupled_bump, mean_coupled_bump-std_coupled_bump,
-                     color='red', alpha=0.2)
+                     facecolor='Orange', alpha=0.3)
 
     ax.set_xlim([200., 600.])
     ax.set_xlabel("Time (ms)")

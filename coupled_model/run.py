@@ -7,18 +7,20 @@ from visualize_protocol import vis_setup
 
 from configs import (
     slow_coupled_config,
-    fast_coupled_config
+    fast_coupled_config,
+    balance_coupled_config,
     )
 
 config_and_name = {
         slow_coupled_config: "slow_coupled",
         fast_coupled_config: "fast_coupled",
+        balance_coupled_config: "balance_coupled",
         }
 
-config_file = slow_coupled_config
+config_file = balance_coupled_config
 config = config_file.config
 
-print(f"Using {config_and_name[config_file]}")
+print(f"Using {config_and_name[config_file]} in run file.")
 
 bp.math.set_platform('cpu')
 global_dt = 0.01
@@ -71,7 +73,7 @@ if __name__ == "__main__":
     # Available protocols are:
     # 'persistent_input': persistent input for bump holding task, requires "slow_coupled" config
     # 'scalability_input': scalability test for bump holding task, requires "slow_coupled" config
-    # 'balance_check_bump_input: check balance condition in Ip using bump input
+    # 'balance_check_bump_input: check balance condition in Ip using bump input, requires "balance_coupled" config
     # 'balance_check_flat_input: check balance condition in Ip using flat input
     # 'irregular_check_flat_input': check whether the network activity is irregular, requires "slow_coupled" config
     # 'tracking_input': tracks a moving input, requires "slow_coupled" config

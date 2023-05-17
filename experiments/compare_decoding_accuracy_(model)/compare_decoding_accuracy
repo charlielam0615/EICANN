@@ -1,0 +1,135 @@
+import os, sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+from mpl_toolkits.axes_grid1 import Divider, Size
+from utils.vis_utils import moving_average, decode_population_vector
+from tqdm import tqdm
+
+T = 150
+size_E = 800
+dt = 0.01
+
+fig = plt.figure(figsize=(3.5, 1.2))
+model = "unbalanced"
+
+# The first items are for padding and the second items are for the axes.
+# sizes are in inch.
+h = [Size.Fixed(1.0), Size.Fixed(1.75)]
+v = [Size.Fixed(0.25), Size.Fixed(0.7)]
+
+divider = Divider(fig, (0, 0, 1, 1), h, v, aspect=False)
+    # The width and height of the rectangle are ignored.
+
+ax = fig.add_axes(
+    divider.get_position(),
+    axes_locator=divider.new_locator(nx=1, ny=1)
+    )
+
+abspath = '/Users/charlie/Local Documents/Projects/EI Balanced CANN/1d code/experiments/compare_decoding_accuracy_(model)/'
+
+def read_data():
+    positions = []
+    norms = []
+    available_files = []
+    # iterate over data
+    for file_name in os.listdir(abspath+'data/'):
+        if file_name.endswith('.npz') and file_name.startswith(model):
+            available_files.append(file_name)
+
+    for file_name in tqdm(available_files):        
+            data = np.load(abspath+'data/' + file_name)
+            input_duration = data['input_duration']
+            ts, E_spike = data['ts'], data['E_spike']
+            input_duration, duration = data['input_duration'], data['duration']
+
+            ts = moving_average(ts, n=T, axis=0)
+            ma = moving_average(E_spike, n=T, axis=0)
+            decoded_pos, norm = decode_population_vector(ma)
+
+            positions.append(decoded_pos)
+            norms.append(norm)
+
+    positions = np.stack(positions, axis=0)
+    norms = np.stack(norms, axis=0)
+    mean_pos = np.mean(positions, axis=0)
+    std_pos = np.std(positions, axis=0)
+
+    return mean_pos, std_pos, norms, input_duration, ts
+
+
+def save_data(mean_pos, std_pos, norms, input_duration, ts):
+    np.savez_compressed(
+        f"{abspath + model}_{T}_data.npz", 
+        mean_pos=mean_pos, 
+        std_pos=std_pos, 
+        norms=norms,
+        input_duration=input_duration, 
+        ts=ts
+    )
+
+
+def load_data():
+    data = np.load(f"{abspath + model}_{T}_data.npz")
+    mean_pos, std_pos, norms, input_duration, ts = data['mean_pos'], data['std_pos'], data['norms'], data['input_duration'], data['ts']
+    return mean_pos, std_pos, norms, input_duration, ts
+
+
+
+if __name__ == "__main__":
+    read_flag = False
+    save_flag = read_flag
+    load_flag = not read_flag
+
+    plot_args = {
+        "balanced":{
+            "cm": plt.cm.YlOrBr,
+            "facecolor": 'C1',
+            "save_name": f"Fig4A2_decode_{T}_dpi600.png"
+        },
+        "unbalanced":{
+            "cm": plt.cm.GnBu,
+            "facecolor": 'C0',
+            "save_name": f"Fig4A1_decode_{T}_dpi600.png"
+        }
+    }
+
+    if read_flag:
+        mean_pos, std_pos, norms, input_duration, ts = read_data()
+        if save_flag:
+            save_data(mean_pos, std_pos, norms, input_duration, ts)
+    elif load_flag:
+        mean_pos, std_pos, norms, input_duration, ts = load_data()
+
+    input_start_idx = int((input_duration[0])/dt+T//2)
+    ax.plot([0, ts[input_start_idx]], [0, 0], 'k--')
+    # plt.plot(ts[input_start_idx:], np.zeros_like(ts[input_start_idx:]), 'k-', linewidth=2.0)
+    norms = norms.mean(axis=0)
+    norm = np.clip(norms / np.mean(norms[-10000:]), a_min=0., a_max=1.)
+    color = [plot_args[model]["cm"](conf.item()*0.8 + 0.01) for conf in norm]
+    ax.scatter(ts[input_start_idx:], np.zeros_like(ts[input_start_idx:]), marker='_', color=color[input_start_idx:], zorder=1, s=4.)
+
+    ax.fill_between(
+        ts[input_start_idx:], 
+        mean_pos[input_start_idx:]-std_pos[input_start_idx:], 
+        mean_pos[input_start_idx:]+std_pos[input_start_idx:],
+        alpha=0.5,
+        facecolor=plot_args[model]["facecolor"],
+        zorder=0
+    )
+    ax.set_ylim([-np.pi/6, np.pi/6])
+    ax.set_xlim([0, 1500])
+    ax.set_xticks([0, 500, 1000, 1500])
+    ax.set_yticks([-np.pi/6, np.pi/6])
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+
+    plt.savefig(f"/Users/charlie/Local Documents/Projects/EI Balanced CANN/overleaf_version/AI - formal figs/Fig4/{plot_args[model]['save_name']}", 
+                format="png", dpi=600)
+    plt.show()
+
+
+
+        

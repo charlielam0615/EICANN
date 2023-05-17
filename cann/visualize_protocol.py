@@ -29,7 +29,7 @@ def persistent_protocol(runner, net, E_inp, duration, input_duration, neuron_ind
     # The first items are for padding and the second items are for the axes.
     # sizes are in inch.
     h = [Size.Fixed(1.0), Size.Fixed(3.)]
-    v = [Size.Fixed(0.5), Size.Fixed(1.2), Size.Fixed(0.5), Size.Fixed(1.2)]
+    v = [Size.Fixed(0.5), Size.Fixed(1.2), Size.Fixed(0.5), Size.Fixed(1.2), Size.Fixed(0.5), Size.Fixed(0.4),]
 
     divider = Divider(fig, (0, 0, 1, 1), h, v, aspect=False)
     # The width and height of the rectangle are ignored.
@@ -45,32 +45,61 @@ def persistent_protocol(runner, net, E_inp, duration, input_duration, neuron_ind
     ax1.set_ylim([0, net.size_E])
     ax1.set_xticklabels([])
 
-    # subplot 2: readout plot
+
     ax2 = fig.add_axes(divider.get_position(),
                       axes_locator=divider.new_locator(nx=1, ny=1))
-    T = 200  # 2 ms
+    T = 50  # 0.5 ms
     ts = moving_average(runner.mon.ts, n=T, axis=0)
-    readout = calculate_population_readout(activity=runner.mon['E.spike'], T=T)
-    fitted = moving_average(readout.T, n=T * 10, axis=0)
-    nm_readout = readout.T / bm.max(fitted) * 1.1
-    fitted = fitted / bm.max(fitted) * 1.1
-    ax2.plot(ts, nm_readout, label='_projection', alpha=0.2, color="red")
-    ax2.plot(ts[T * 10 - 1:], fitted, linewidth=1., linestyle='-', label='readout', color="red")
-    # plot onset and offset of the stimulus
-    ax2.plot((input_duration[0], input_duration[0]), (bm.min(nm_readout), bm.max(nm_readout)),
-             color='blue', linestyle='--', linewidth=1.5)
-    ax2.plot((input_duration[1], input_duration[1]), (bm.min(nm_readout), bm.max(nm_readout)),
-             color='blue', linestyle='--', linewidth=1.5)
-    ax2.legend(loc='upper right')
-    ax2.grid('on')
+    ma = moving_average(runner.mon['E.spike'], n=T, axis=0)
+    decoded_pos, norm = decode_population_vector(ma)
+    # adjust the color a little bit for better visualization
+    norm_ = moving_average(norm, n=3*T, axis=0)
+    norm = bm.concatenate([norm_, norm[-3*T+1:]])
+    norm = norm - bm.mean(norm[10000:]) * 0.25
+    confidence = bm.clip(norm / bm.mean(norm[-10000:]), a_min=0., a_max=1.)
+    color = [plt.cm.YlGnBu(conf.item()*0.8 + 0.01) for conf in confidence]
+    im = ax2.scatter(ts[::-1], decoded_pos[::-1], marker='.', color=color[::-1], edgecolors=None, s=1.0)
     ax2.set_xlim([0, duration])
-    ax2.set_xlabel("Time (ms)")
-    ax2.set_ylabel("Readout")
-    ax2.set_ylim([-0.2, 1.5])
+    ax2.set_ylim([-np.pi, np.pi])
+    ax2.set_yticks([-np.pi, 0, np.pi])
+    ax2.set_xticklabels([])
+    ax2.set_yticklabels([])
 
-    fig.align_ylabels([ax1, ax2])
+    ax3 = fig.add_axes(divider.get_position(),
+                      axes_locator=divider.new_locator(nx=1, ny=5))
+    cmap = plt.cm.get_cmap('YlGnBu', 512)
+    newcmp = ListedColormap(cmap(np.linspace(0., 0.8, 256)))
+    norm = mpl.colors.Normalize(vmin=0, vmax=1)
+    cbar = mpl.colorbar.ColorbarBase(ax3, cmap=newcmp, norm=norm, orientation='horizontal')
+    cbar.outline.set_visible(False)
+    cbar.set_ticks([])
+
+
+    # subplot 2: ppc read projection 
+    # ax2 = fig.add_axes(divider.get_position(),
+    #                   axes_locator=divider.new_locator(nx=1, ny=1))
+    # T = 200  # 2 ms
+    # ts = moving_average(runner.mon.ts, n=T, axis=0)
+    # readout = calculate_population_readout(activity=runner.mon['E.spike'], T=T)
+    # fitted = moving_average(readout.T, n=T * 10, axis=0)
+    # nm_readout = readout.T / bm.max(fitted) * 1.1
+    # fitted = fitted / bm.max(fitted) * 1.1
+    # ax2.plot(ts, nm_readout, label='_projection', alpha=0.2, color="red")
+    # ax2.plot(ts[T * 10 - 1:], fitted, linewidth=1., linestyle='-', label='readout', color="red")
+    # # plot onset and offset of the stimulus
+    # ax2.plot((input_duration[0], input_duration[0]), (bm.min(nm_readout), bm.max(nm_readout)),
+    #          color='blue', linestyle='--', linewidth=1.5)
+    # ax2.plot((input_duration[1], input_duration[1]), (bm.min(nm_readout), bm.max(nm_readout)),
+    #          color='blue', linestyle='--', linewidth=1.5)
+    # ax2.legend(loc='upper right')
+    # ax2.grid('on')
+    # ax2.set_xlim([0, duration])
+    # ax2.set_xlabel("Time (ms)")
+    # ax2.set_ylabel("Readout")
+    # ax2.set_ylim([-0.2, 1.5])
+
+    # fig.align_ylabels([ax1, ax2])
     plt.show()
-
 
 def scalability_protocol(runner, net, E_inp, duration, input_duration):
     fig, gs = bp.visualize.get_figure(1, 1, 1., 4)
@@ -158,13 +187,23 @@ def tracking_protocol(runner, net, E_inp, duration, input_duration):
     plt.show()
 
 
+def _save_convergence_rate_population_readout_protocol(runner, net, E_inp, duration, input_duration):
+    ts = runner.mon.ts
+    E_spike = runner.mon['E.spike']
+    path = "/Users/charlie/Local Documents/Projects/EI Balanced CANN/1d code/experiments/compare_decoding_accuracy_(model)/data"
+    import uuid
+    file_name = f"unbalanced_{str(uuid.uuid4())[:5]}.npz"
+    np.savez(f"{path}/{file_name}", ts=ts, E_spike=E_spike, input_duration=input_duration, duration=duration)
+    return
+
+
 def convergence_rate_population_readout_protocol(runner, net, E_inp, duration, input_duration):
     fig = plt.figure(figsize=(4, 5))
 
     # The first items are for padding and the second items are for the axes.
     # sizes are in inch.
-    h = [Size.Fixed(1.0), Size.Fixed(2.)]
-    v = [Size.Fixed(0.25), Size.Fixed(0.8), Size.Fixed(0.25), Size.Fixed(0.8), Size.Fixed(0.25), Size.Fixed(0.8), Size.Fixed(0.25), Size.Fixed(0.2)]
+    h = [Size.Fixed(1.0), Size.Fixed(1.75)]
+    v = [Size.Fixed(0.25), Size.Fixed(0.7), Size.Fixed(0.25), Size.Fixed(0.7), Size.Fixed(0.25), Size.Fixed(0.7), Size.Fixed(0.25), Size.Fixed(0.2)]
 
     divider = Divider(fig, (0, 0, 1, 1), h, v, aspect=False)
     # The width and height of the rectangle are ignored.
@@ -223,7 +262,7 @@ def convergence_rate_population_readout_protocol(runner, net, E_inp, duration, i
     ma_input = ma_input - bm.min(ma_input)
     fitted = moving_average(nm_readout, n=T * 10, axis=0)
     ax.plot(ts, nm_readout, label='_projection', alpha=0.3, color='royalblue')
-    ax.plot(ts[T*10-1:], fitted, linewidth=1., linestyle='-', label='       ', color='royalblue')
+    ax.plot(ts[T*10-1:], fitted, linewidth=1.5, linestyle='-', label='            ', color='royalblue')
     ax.plot(ts, ma_input / bm.max(ma_input), color='black', linewidth=2., label='_input', alpha=0.5, linestyle='-')
     ax.set_xlim([0, duration])
     ax.set_xticklabels([])
@@ -240,7 +279,7 @@ def convergence_rate_population_readout_protocol(runner, net, E_inp, duration, i
     newcmp = ListedColormap(cmap(np.linspace(0., 0.8, 256)))
     norm = mpl.colors.Normalize(vmin=0, vmax=1)
     cbar = mpl.colorbar.ColorbarBase(ax, cmap=newcmp, norm=norm, orientation='horizontal')
-    # cbar = fig.colorbar(im, cax=ax, orientation='horizontal')
+    cbar.outline.set_visible(False)
     cbar.set_ticks([])
 
 
@@ -469,7 +508,7 @@ def debug_protocol(runner, net, E_inp, duration, input_duration, neuron_index):
 vis_setup = {
     "persistent_input": partial(persistent_protocol, neuron_indices=(400, 50)),
     "tracking_input": partial(tracking_protocol),
-    "convergence_rate_population_readout_input": partial(convergence_rate_population_readout_protocol),
+    "convergence_rate_population_readout_input": partial(_save_convergence_rate_population_readout_protocol),    # _save_convergence_rate_population_readout_protocol
     "convergence_rate_current_input": partial(convergence_rate_current_protocol),
     "noise_sensitivity_input": partial(noise_sensitivity_protocol, save_mse=True, noise_level_str='0_1'),
     "sudden_change_convergence_input": partial(sudden_change_convergence_protocol),
