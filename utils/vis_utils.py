@@ -81,7 +81,7 @@ def decode_population_vector(v):
 
 def plot_and_fill_between(ax, x, y_mean, y_std, color, label=None, shade_alpha=0.3, **kwargs):
     ax.plot(x, y_mean, color=color, label=label, **kwargs)
-    ax.fill_between(x, y_mean+y_std, y_mean-y_std, color=color, alpha=shade_alpha, step='mid')
+    ax.fill_between(x, y_mean+y_std, y_mean-y_std, facecolor=color, alpha=shade_alpha, step='mid')
     # ax.fill_between(x, y_mean-y_std, y_mean+y_std, color=color, step='pre')
 
 
