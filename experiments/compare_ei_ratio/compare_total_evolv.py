@@ -72,13 +72,13 @@ for key in available_keys:
 plot1_dict = {
     'balanced_peripheral': {
         'mean': bpr_mean,
-        'std': bpr_std * 0.3,
-        'color': 'blue',
+        'std': bpr_std,
+        'color': 'red',
     },
     'unbalanced_peripheral': {
         'mean': upr_mean,
-        'std': upr_std * 0.5,
-        'color': 'red',
+        'std': upr_std,
+        'color': 'blue',
     },
 }
 
@@ -86,12 +86,12 @@ plot2_dict = {
     # balanced
     'center':{
         'mean': bcei_mean,
-        'std': bcei_std * 0.6,
+        'std': bcei_std,
         'color': 'green',
     },
     'peripheral':{
         'mean': bpei_mean,
-        'std': bpei_std * 0.6,
+        'std': bpei_std,
         'color': 'orange',
     },
 }
@@ -100,17 +100,17 @@ plot3_dict = {
     # unbalanced
     'center':{
         'mean': ucei_mean,
-        'std': ucei_std * 0.6,
+        'std': ucei_std,
         'color': 'green',
     },
     'peripheral':{
         'mean': upei_mean,
-        'std': upei_std * 0.6,
+        'std': upei_std,
         'color': 'orange',
     },
 }
 
-fig = plt.figure(figsize=(9, 2))
+fig = plt.figure(figsize=(9, 1.5))
 ax = fig.add_subplot(1, 3, 1)
 ts = moving_average(balanced_data['center_ts'][0, sti_onset_idx:], smooth_T)
 for key, value in plot1_dict.items():
@@ -128,7 +128,7 @@ ax.set_xlim([500, 2000])
 ax.set_ylim([0, 6])
 ax.set_yticklabels([])
 ax.set_xticklabels([])
-ax.legend(frameon=False)
+ax.legend(frameon=False, loc='upper right')
 
 ax = fig.add_subplot(1, 3, 3)
 for key, value in plot3_dict.items():
@@ -137,9 +137,9 @@ plt.xlim([500, 2000])
 plt.ylim([0, 6])
 ax.set_yticklabels([])
 ax.set_xticklabels([])
-ax.legend(frameon=False)
+ax.legend(frameon=False, loc='upper right')
 
-plt.savefig("/Users/charlie/Local Documents/Projects/EI Balanced CANN/overleaf_version/AI - formal figs/Fig6/new_fig_2.png", dpi=1200)
+plt.savefig("/Users/charlie/Local Documents/Projects/EI Balanced CANN/overleaf_version/AI - formal figs/Fig5/new_fig_2.png", dpi=600)
 
 plt.show()
 
